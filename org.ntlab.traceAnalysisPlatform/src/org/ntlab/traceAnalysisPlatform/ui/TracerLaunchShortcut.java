@@ -33,7 +33,7 @@ public class TracerLaunchShortcut extends org.eclipse.jdt.debug.ui.launchConfigu
 	/**
 	 * Šg’£ƒ|ƒCƒ“ƒg org.eclipse.debug.core.launchConfigurationTypes ‚Ì ID
 	 */
-	private static final String LAUNCH_CONFIGURATION_TYPE_ID = "org.ntlab.traceCollector.launchConfigurationType";
+	private static final String LAUNCH_CONFIGURATION_TYPE_ID = "org.ntlab.traceAnalysisPlatform.launchConfigurationType";
 	
 	/**
 	 * Returns the Java elements corresponding to the given objects. Members are translated

@@ -1,0 +1,1192 @@
+package org.ntlab.traceAnalysisPlatform.tracer.trace;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Stack;
+
+import org.ntlab.traceAnalysisPlatform.tracer.OnlineTraceOutput;
+
+//import com.sun.jdi.ObjectReference;
+//import com.sun.jdi.Value;
+
+public class TraceJSON extends Trace {
+//	private static TraceJSON theTrace = null;
+	private HashMap<String, ClassInfo> classes = new HashMap<>();
+	private HashMap<String, Stack<String>> stacks = new HashMap<String, Stack<String>>();
+	private ThreadInstance thread = null;
+	
+	private TraceJSON() {
+		
+	}
+
+	/**
+	 * 指定したJSONのトレースファイルを解読して Trace オブジェクトを生成する
+	 * @param file トレースファイル
+	 */
+	private TraceJSON(BufferedReader file) {
+		try {
+			readJSON(file);
+			file.close();		
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * 指定したJSONのトレースファイルを解読して Trace オブジェクトを生成する
+	 * @param traceFile トレースファイルのパス
+	 */
+	private TraceJSON(String traceFile) {
+		BufferedReader file;
+		try {
+			file = new BufferedReader(new FileReader(traceFile));
+			readJSON(file);
+			file.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public static TraceJSON getInstance() {
+		if (theTrace == null) {
+			theTrace = new TraceJSON();
+		}
+		return (TraceJSON)theTrace;
+	}
+
+	private void readJSON(BufferedReader file) throws IOException {
+		// トレースファイル読み込み
+		String line = null;
+		String[] type;
+		String[] classNameData;
+		String[] pathData;
+		String[] signature;
+		String[] receiver;
+		String[] arguments;
+		String[] lineData;
+		String[] threadId;
+		String[] thisObj;
+		String[] containerObj;
+		String[] valueObj;
+		String[] returnValue;
+		String[] arrayObj;
+		String[] thisData;
+		String[] containerData;
+		String[] valueData;
+		String[] returnData;
+		String[] fieldData;
+		String[] arrayData;
+		String[] blockIdData;
+		String[] incomingsData;
+		String[] dimensionData;
+		String[] indexData;
+		String className;
+		String classPath;
+		String loaderPath;
+		String time;
+		String thisObjectId;
+		String thisClassName;
+		String containerObjectId;
+		String containerClassName;
+		String valueObjectId;
+		String valueClassName;
+		String returnClassName;
+		String returnObjectId;
+		String arrayObjectId;
+		String arrayClassName;
+		String shortSignature;
+		boolean isConstractor = false;
+		boolean isCollectionType = false;
+		boolean isStatic = false;
+		int dimension;
+		int index;
+		int blockId;
+		int incomings;
+		int lineNum;
+		long timeStamp = 0L;
+		ThreadInstance thread = null;
+		HashMap<String, Stack<String>> stacks = new HashMap<String, Stack<String>>();
+		while ((line = file.readLine()) != null) {
+			// トレースファイルの解析
+			if (line.startsWith("{\"type\":\"classDef\"")) {
+				// クラス定義
+				type = line.split(",\"name\":\"");
+				classNameData = type[1].split("\",\"path\":\"");
+				className = classNameData[0];
+				pathData = classNameData[1].split("\",\"loaderPath\":\"");
+				classPath = pathData[0].substring(1);								// 先頭の / を取り除く
+				loaderPath = pathData[1].substring(1, pathData[1].length() - 3);	// 先頭の / と、末尾の "}, を取り除く
+				initializeClass(className, classPath, loaderPath);
+			} else if (line.startsWith("{\"type\":\"methodCall\"")) {
+				// メソッド呼び出しの呼び出し側
+				type = line.split(",\"callerSideSignature\":\"");
+				signature = type[1].split("\",\"threadId\":");
+				threadId = signature[1].split(",\"lineNum\":");
+				lineNum = Integer.parseInt(threadId[1].substring(0, threadId[1].length() - 2));	// 末尾の }, を取り除く
+				thread = threads.get(threadId[0]);
+				thread.preCallMethod(signature[0], lineNum);
+			} else if (line.startsWith("{\"type\":\"methodEntry\"")) {
+				// メソッド呼び出し
+				type = line.split("\"signature\":\"");
+				signature = type[1].split("\",\"receiver\":");
+				receiver = signature[1].split(",\"args\":");
+				arguments = receiver[1].split(",\"threadId\":");
+				threadId = arguments[1].split(",\"time\":");
+				thisData = parseClassNameAndObjectId(receiver[0]);
+				thisClassName = thisData[0];
+				thisObjectId = thisData[1];
+				isConstractor = false;
+				isStatic = false;
+				if (signature[0].contains("static ")) {
+					isStatic = true;
+				}
+				thread = threads.get(threadId[0]);
+				time = threadId[1].substring(0, threadId[1].length() - 2);			// 末尾の }, を取り除く
+				timeStamp = Long.parseLong(time);
+				Stack<String> stack;
+				if (thread == null) {
+					thread = new ThreadInstance(threadId[0]);
+					threads.put(threadId[0], thread);
+					stack = new Stack<String>();
+					stacks.put(threadId[0], stack);
+				} else {
+					stack = stacks.get(threadId[0]);
+				}
+				stack.push(signature[0]);
+				// メソッド呼び出しの設定
+				thread.callMethod(signature[0], null, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
+				// 引数の設定
+				thread.setArgments(parseArguments(arguments));
+			} else if (line.startsWith("{\"type\":\"constructorEntry\"")) {
+				// コンストラクタ呼び出し
+				type = line.split("\"signature\":\"");
+				signature = type[1].split("\",\"class\":\"");
+				receiver = signature[1].split("\",\"args\":");
+				arguments = receiver[1].split(",\"threadId\":");
+				threadId = arguments[1].split(",\"time\":");
+				thisClassName = receiver[0];
+				thisObjectId = "0";
+				isConstractor = true;
+				isStatic = false;
+				thread = threads.get(threadId[0]);
+				time = threadId[1].substring(0, threadId[1].length() - 2);			// 末尾の }, を取り除く
+				timeStamp = Long.parseLong(time);
+				Stack<String> stack;
+				if (thread == null) {
+					thread = new ThreadInstance(threadId[0]);
+					threads.put(threadId[0], thread);
+					stack = new Stack<String>();
+					stacks.put(threadId[0], stack);
+				} else {
+					stack = stacks.get(threadId[0]);
+				}
+				stack.push(signature[0]);
+				// メソッド呼び出しの設定
+				thread.callMethod(signature[0], null, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
+				// 引数の設定
+				thread.setArgments(parseArguments(arguments));
+			} else if (line.startsWith("{\"type\":\"methodExit\"")) {
+				// メソッドからの復帰
+				type = line.split(",\"shortSignature\":\"");
+				signature = type[1].split("\",\"receiver\":");
+				receiver = signature[1].split(",\"returnValue\":");
+				returnValue = receiver[1].split(",\"threadId\":");
+				threadId = returnValue[1].split(",\"time\":");
+				thisData = parseClassNameAndObjectId(receiver[0]);
+				thisClassName = thisData[0];
+				thisObjectId = thisData[1];
+				returnData = parseClassNameAndObjectId(returnValue[0]);
+				returnClassName = returnData[0];
+				returnObjectId = returnData[1];
+				shortSignature = signature[0];
+				time = threadId[1].substring(0, threadId[1].length() - 2);		// 末尾の }, を取り除く
+				timeStamp = Long.parseLong(time);
+				Stack<String> stack = stacks.get(threadId[0]);
+				if (!stack.isEmpty()) {
+					String line2 = stack.peek();
+					if (line2.endsWith(shortSignature)) {
+						stack.pop();
+					} else {
+						do {
+							stack.pop();
+							thread.terminateMethod();
+							line2 = stack.peek();
+						} while (!stack.isEmpty() && !line2.endsWith(shortSignature));
+						if (!stack.isEmpty()) stack.pop();
+					}
+					thread = threads.get(threadId[0]);
+					ObjectReference returnVal = new ObjectReference(returnObjectId, returnClassName);					
+					isCollectionType = false;
+					if(thisClassName.contains("java.util.List")
+							|| thisClassName.contains("java.util.Vector")
+							|| thisClassName.contains("java.util.Iterator")
+							|| thisClassName.contains("java.util.ListIterator")
+							|| thisClassName.contains("java.util.ArrayList")
+							|| thisClassName.contains("java.util.Stack")
+							|| thisClassName.contains("java.util.Hash")
+							|| thisClassName.contains("java.util.Map")
+							|| thisClassName.contains("java.util.Set")
+							|| thisClassName.contains("java.util.Linked")
+							|| thisClassName.contains("java.lang.Thread")) {
+						isCollectionType = true;
+					}
+					// メソッドからの復帰の設定
+					thread.returnMethod(returnVal, thisObjectId, isCollectionType, timeStamp);
+				}
+			} else if (line.startsWith("{\"type\":\"constructorExit\"")) {
+				// コンストラクタからの復帰
+				type = line.split(",\"shortSignature\":\"");
+				signature = type[1].split("\",\"returnValue\":");
+				returnValue = signature[1].split(",\"threadId\":");
+				threadId = returnValue[1].split(",\"time\":");
+				returnData = parseClassNameAndObjectId(returnValue[0]);
+				thisClassName = returnClassName = returnData[0];
+				thisObjectId = returnObjectId = returnData[1];
+				time = threadId[1].substring(0, threadId[1].length() - 2);		// 末尾の }, を取り除く
+				timeStamp = Long.parseLong(time);
+				Stack<String> stack = stacks.get(threadId[0]);
+				shortSignature = signature[0];
+				if (!stack.isEmpty()) {
+					String line2 = stack.peek();
+					if (line2.endsWith(shortSignature)) {
+						stack.pop();
+					} else {
+						do {
+							stack.pop();
+							thread.terminateMethod();
+							line2 = stack.peek();
+						} while (!stack.isEmpty() && !line2.endsWith(shortSignature));
+						if (!stack.isEmpty()) stack.pop();
+					}
+					thread = threads.get(threadId[0]);
+					ObjectReference returnVal = new ObjectReference(returnObjectId, returnClassName);					
+					isCollectionType = false;
+					if(thisClassName.contains("java.util.List")
+							|| thisClassName.contains("java.util.Vector")
+							|| thisClassName.contains("java.util.Iterator")
+							|| thisClassName.contains("java.util.ListIterator")
+							|| thisClassName.contains("java.util.ArrayList")
+							|| thisClassName.contains("java.util.Stack")
+							|| thisClassName.contains("java.util.Hash")
+							|| thisClassName.contains("java.util.Map")
+							|| thisClassName.contains("java.util.Set")
+							|| thisClassName.contains("java.util.Linked")
+							|| thisClassName.contains("java.lang.Thread")) {
+						isCollectionType = true;
+					}
+					// メソッドからの復帰の設定
+					thread.returnMethod(returnVal, thisObjectId, isCollectionType, timeStamp);
+				}
+			} else if (line.startsWith("{\"type\":\"fieldGet\"")) {
+				// フィールドアクセス
+				type = line.split(",\"fieldName\":\"");
+				fieldData = type[1].split("\",\"this\":");
+				thisObj = fieldData[1].split(",\"container\":");
+				containerObj = thisObj[1].split(",\"value\":");
+				valueObj = containerObj[1].split(",\"threadId\":");
+				threadId = valueObj[1].split(",\"lineNum\":");
+				lineData = threadId[1].split(",\"time\":");
+				thisData = parseClassNameAndObjectId(thisObj[0]);
+				thisClassName = thisData[0];
+				thisObjectId = thisData[1];
+				containerData = parseClassNameAndObjectId(containerObj[0]);
+				containerClassName = containerData[0];
+				containerObjectId = containerData[1];
+				valueData = parseClassNameAndObjectId(valueObj[0]);
+				valueClassName = valueData[0];
+				valueObjectId = valueData[1];
+				thread = threads.get(threadId[0]);
+				lineNum = Integer.parseInt(lineData[0]);
+				time = lineData[1].substring(0, lineData[1].length() - 2);		// 末尾の }, を取り除く
+				timeStamp = Long.parseLong(time);
+				// フィールドアクセスの設定
+				if (thread != null) thread.fieldAccess(fieldData[0], valueClassName, valueObjectId, containerClassName, containerObjectId, thisClassName, thisObjectId, lineNum, timeStamp);
+			} else if (line.startsWith("{\"type\":\"fieldSet\"")) {
+				// フィールド更新
+				type = line.split(",\"fieldName\":\"");
+				fieldData = type[1].split("\",\"container\":");
+				containerObj = fieldData[1].split(",\"value\":");
+				valueObj = containerObj[1].split(",\"threadId\":");
+				threadId = valueObj[1].split(",\"lineNum\":");
+				lineData = threadId[1].split(",\"time\":");
+				containerData = parseClassNameAndObjectId(containerObj[0]);
+				containerClassName = containerData[0];
+				containerObjectId = containerData[1];
+				valueData = parseClassNameAndObjectId(valueObj[0]);
+				valueClassName = valueData[0];
+				valueObjectId = valueData[1];
+				thread = threads.get(threadId[0]);
+				lineNum = Integer.parseInt(lineData[0]);
+				time = lineData[1].substring(0, lineData[1].length() - 2);		// 末尾の }, を取り除く
+				timeStamp = Long.parseLong(time);
+				// フィールド更新の設定
+				if (thread != null) thread.fieldUpdate(fieldData[0], valueClassName, valueObjectId, containerClassName, containerObjectId, lineNum, timeStamp);
+			} else if (line.startsWith("{\"type\":\"arrayCreate\"")) {
+				// 配列生成
+				type = line.split(",\"array\":");
+				arrayObj = type[1].split(",\"dimension\":");
+				arrayData = parseClassNameAndObjectId(arrayObj[0]);
+				arrayClassName = arrayData[0];
+				arrayObjectId = arrayData[1];
+				dimensionData = arrayObj[1].split(",\"threadId\":");
+				dimension = Integer.parseInt(dimensionData[0]);
+				threadId = dimensionData[1].split(",\"lineNum\":");
+				thread = threads.get(threadId[0]);
+				lineData = threadId[1].split(",\"time\":");
+				lineNum = Integer.parseInt(lineData[0]);
+				time = lineData[1].substring(0, lineData[1].length() - 2);		// 末尾の }, を取り除く
+				timeStamp = Long.parseLong(time);
+				if (thread != null) thread.arrayCreate(arrayClassName, arrayObjectId, dimension, lineNum, timeStamp);
+			} else if (line.startsWith("{\"type\":\"arraySet\"")) {
+				// 配列要素への代入
+				type = line.split(",\"array\":");
+				arrayObj = type[1].split(",\"index\":");
+				arrayData = parseClassNameAndObjectId(arrayObj[0]);
+				arrayClassName = arrayData[0];
+				arrayObjectId = arrayData[1];
+				indexData = arrayObj[1].split(",\"value\":");
+				index = Integer.parseInt(indexData[0]);
+				valueObj = indexData[1].split(",\"threadId\":");
+				valueData = parseClassNameAndObjectId(valueObj[0]);
+				valueClassName = valueData[0];
+				valueObjectId = valueData[1];
+				threadId = valueObj[1].split(",\"time\":");
+				thread = threads.get(threadId[0]);
+				time = threadId[1].substring(0, threadId[1].length() - 2);		// 末尾の }, を取り除く					
+				timeStamp = Long.parseLong(time);
+				if (thread != null) thread.arraySet(arrayClassName, arrayObjectId, index, valueClassName, valueObjectId, 0, timeStamp);
+			} else if (line.startsWith("{\"type\":\"arrayGet\"")) {
+				// 配列要素の参照
+				type = line.split(",\"array\":");
+				arrayObj = type[1].split(",\"index\":");
+				arrayData = parseClassNameAndObjectId(arrayObj[0]);
+				arrayClassName = arrayData[0];
+				arrayObjectId = arrayData[1];
+				indexData = arrayObj[1].split(",\"value\":");
+				index = Integer.parseInt(indexData[0]);
+				valueObj = indexData[1].split(",\"threadId\":");
+				valueData = parseClassNameAndObjectId(valueObj[0]);
+				valueClassName = valueData[0];
+				valueObjectId = valueData[1];
+				threadId = valueObj[1].split(",\"time\":");
+				thread = threads.get(threadId[0]);
+				time = threadId[1].substring(0, threadId[1].length() - 2);		// 末尾の }, を取り除く					
+				timeStamp = Long.parseLong(time);
+				if (thread != null) thread.arrayGet(arrayClassName, arrayObjectId, index, valueClassName, valueObjectId, 0, timeStamp);
+			} else if (line.startsWith("{\"type\":\"blockEntry\"")) {
+				// ブロックの開始
+				type = line.split(",\"methodSignature\":\"");
+				signature = type[1].split("\",\"blockId\":");
+				blockIdData = signature[1].split(",\"incomings\":");
+				blockId = Integer.parseInt(blockIdData[0]);
+				incomingsData = blockIdData[1].split(",\"threadId\":");
+				incomings = Integer.parseInt(incomingsData[0]);
+				threadId = incomingsData[1].split(",\"lineNum\":");
+				thread = threads.get(threadId[0]);
+				lineData = threadId[1].split(",\"time\":");
+				lineNum = Integer.parseInt(lineData[0]);
+				time = lineData[1].substring(0, lineData[1].length() - 2);		// 末尾の }, を取り除く
+				timeStamp = Long.parseLong(time);
+				if (thread != null) thread.blockEnter(blockId, incomings, lineNum, timeStamp);
+			}
+		}
+	}
+
+	/**
+	 * クラス名とオブジェクトIDを表すJSONオブジェクトを解読する
+	 * @param classNameAndObjectIdJSON トレースファイル内のJSONオブジェクト
+	 * @return
+	 */
+	protected String[] parseClassNameAndObjectId(String classNameAndObjectIdJSON) {
+		// 先頭の {"class":" の10文字と末尾の } を取り除いて分離
+		return classNameAndObjectIdJSON.substring(10, classNameAndObjectIdJSON.length() - 1).split("\",\"id\":");
+	}
+	
+	/**
+	 * 引数を表すJSON配列を解読する
+	 * @param arguments
+	 * @return
+	 */
+	protected ArrayList<ObjectReference> parseArguments(String[] arguments) {
+		String[] argData;
+		argData = arguments[0].substring(1, arguments[0].length() - 1).split(",");		// 先頭の [ と末尾の ] を取り除く
+		ArrayList<ObjectReference> argumentsData = new ArrayList<ObjectReference>();
+		for (int k = 0; k < argData.length - 1; k += 2) {
+			argumentsData.add(new ObjectReference(argData[k+1].substring(5, argData[k+1].length() - 1), argData[k].substring(10, argData[k].length() - 1)));
+		}
+		return argumentsData;
+	}
+	
+//	public void initializeClass(String name, String path, String loaderPath) {
+//		classes.put(name, new ClassInfo(name, path, loaderPath));
+//	}
+	
+	public static void initializeClass(String name, String path, String loaderPath) {
+		getInstance().classes.put(name, new ClassInfo(name, path, loaderPath));
+
+		// 確認用
+		System.out.println("name = " + name);
+		System.out.println("path = " + path);
+		System.out.println("loaderPath = " + loaderPath);
+		System.out.println();
+	}
+	
+//	public ClassInfo getClassInfo(String className) {
+//		return classes.get(className);
+//	}
+	
+	public static ClassInfo getClassInfo(String className) {
+		return getInstance().classes.get(className);
+	}
+	
+	public TracePoint getArraySetTracePoint(final Reference ref, TracePoint before) {
+		final TracePoint start = before.duplicate();
+		before = traverseStatementsInTraceBackward(new IStatementVisitor() {
+				@Override
+				public boolean preVisitStatement(Statement statement) {
+					if (statement instanceof ArrayUpdate) {
+						ArrayUpdate arraySet = (ArrayUpdate)start.getStatement();
+						String srcObjId = ref.getSrcObjectId();
+						String dstObjId = ref.getDstObjectId();
+						String srcClassName = ref.getSrcClassName();
+						String dstClassName = ref.getDstClassName();
+						if ((srcObjId != null && srcObjId.equals(arraySet.getArrayObjectId())) 
+							|| (srcObjId == null || isNull(srcObjId)) && srcClassName.equals(arraySet.getArrayClassName())) {
+							if ((dstObjId != null && dstObjId.equals(arraySet.getValueObjectId()))
+								|| ((dstObjId == null || isNull(dstObjId)) && dstClassName.equals(arraySet.getValueClassName()))) {
+								if (srcObjId == null) {
+									ref.setSrcObjectId(arraySet.getArrayObjectId());
+								} else if (srcClassName == null) {
+									ref.setSrcClassName(arraySet.getArrayClassName());
+								}
+								if (dstObjId == null) {
+									ref.setDstObjectId(arraySet.getValueObjectId());
+								} else if (dstClassName == null) {
+									ref.setDstClassName(arraySet.getValueClassName());
+								}
+								return true;
+							}
+						}
+					}
+					return false;
+				}
+				@Override
+				public boolean postVisitStatement(Statement statement) { return false; }
+			}, start);
+		if (before != null) {
+			return before;
+		}
+		return null;
+	}
+	
+	/**
+	 * 実行された全ブロックを取得する
+	 * @return 全ブロック(メソッド名:ブロックID)
+	 */
+	public HashSet<String> getAllBlocks() {
+		final HashSet<String> blocks = new HashSet<String>();
+		Iterator<String> threadsIterator = threads.keySet().iterator();
+		for (; threadsIterator.hasNext();) {
+			ThreadInstance thread = threads.get(threadsIterator.next());
+			thread.traverseMethodExecutionsBackward(new IMethodExecutionVisitor() {
+				@Override
+				public boolean preVisitThread(ThreadInstance thread) {
+					return false;
+				}
+				@Override
+				public boolean postVisitThread(ThreadInstance thread) {
+					return false;
+				}
+				@Override
+				public boolean preVisitMethodExecution(MethodExecution methodExecution) {
+					for (Statement s: methodExecution.getStatements()) {
+						if (s instanceof BlockEnter) {
+							blocks.add(methodExecution.getSignature() + ":" + ((BlockEnter)s).getBlockId());
+						}
+					}
+					return false;
+				}
+				@Override
+				public boolean postVisitMethodExecution(MethodExecution methodExecution, ArrayList<MethodExecution> children) {
+					return false;
+				}
+			});
+		}	
+		return blocks;
+	}
+	
+	/**
+	 * マーク内で実行が開始されたブロックを取得する
+	 * @param markStart マークの開始時刻
+	 * @param markEnd マークの終了時刻
+	 * @return 該当するブロック(メソッド名:ブロックID)
+	 */
+	public HashSet<String> getMarkedBlocks(final long markStart, final long markEnd) {
+		final HashSet<String> blocks = new HashSet<String>();
+		Iterator<String> threadsIterator = threads.keySet().iterator();
+		for (; threadsIterator.hasNext();) {
+			ThreadInstance thread = threads.get(threadsIterator.next());
+			thread.traverseMethodExecutionsBackward(new IMethodExecutionVisitor() {
+				@Override
+				public boolean preVisitThread(ThreadInstance thread) {
+					return false;
+				}
+				@Override
+				public boolean postVisitThread(ThreadInstance thread) {
+					return false;
+				}
+				@Override
+				public boolean preVisitMethodExecution(MethodExecution methodExecution) {
+					if (methodExecution.getExitTime() < markStart) return true;		// 探索終了
+					if (methodExecution.getEntryTime() > markEnd) return false;
+					for (Statement s: methodExecution.getStatements()) {
+						if (s instanceof BlockEnter) {
+							long entryTime = ((BlockEnter)s).getTimeStamp();
+							if (entryTime >= markStart && entryTime <= markEnd) {
+								blocks.add(methodExecution.getSignature() + ":" + ((BlockEnter)s).getBlockId());
+							}
+						}
+					}
+					return false;
+				}
+				@Override
+				public boolean postVisitMethodExecution(MethodExecution methodExecution, ArrayList<MethodExecution> children) {
+					return false;
+				}
+			});
+		}	
+		return blocks;
+	}
+	
+	/**
+	 * 実行された全フローを取得する
+	 * @return 全フロー(メソッド名:フロー元ブロックID:フロー先ブロックID)
+	 */
+	public HashSet<String> getAllFlows() {
+		final HashSet<String> flows = new HashSet<String>();
+		Iterator<String> threadsIterator = threads.keySet().iterator();
+		for (; threadsIterator.hasNext();) {
+			ThreadInstance thread = threads.get(threadsIterator.next());
+			thread.traverseMethodExecutionsBackward(new IMethodExecutionVisitor() {
+				@Override
+				public boolean preVisitThread(ThreadInstance thread) {
+					return false;
+				}
+				@Override
+				public boolean postVisitThread(ThreadInstance thread) {
+					return false;
+				}
+				@Override
+				public boolean preVisitMethodExecution(MethodExecution methodExecution) {
+					int prevBlockId = -1;
+					for (Statement s: methodExecution.getStatements()) {
+						if (s instanceof BlockEnter) {
+							int curBlockID = ((BlockEnter)s).getBlockId();
+							if (prevBlockId != -1) {
+								flows.add(methodExecution.getSignature() + ":" + prevBlockId + ":" + curBlockID);
+							} else {
+								flows.add(methodExecution.getSignature() + ":" + curBlockID);
+							}
+							prevBlockId = curBlockID;
+						}
+					}
+					return false;
+				}
+				@Override
+				public boolean postVisitMethodExecution(MethodExecution methodExecution, ArrayList<MethodExecution> children) {
+					return false;
+				}
+			});
+		}	
+		return flows;
+	}
+	
+	/**
+	 * マーク内で実行されたフローを取得する
+	 * @param markStart マークの開始時刻
+	 * @param markEnd マークの終了時刻
+	 * @return 該当するフロー(メソッド名:フロー元ブロックID:フロー先ブロックID)
+	 */
+	public HashSet<String> getMarkedFlows(final long markStart, final long markEnd) {
+		final HashSet<String> flows = new HashSet<String>();
+		Iterator<String> threadsIterator = threads.keySet().iterator();
+		for (; threadsIterator.hasNext();) {
+			ThreadInstance thread = threads.get(threadsIterator.next());
+			thread.traverseMethodExecutionsBackward(new IMethodExecutionVisitor() {
+				@Override
+				public boolean preVisitThread(ThreadInstance thread) {
+					return false;
+				}
+				@Override
+				public boolean postVisitThread(ThreadInstance thread) {
+					return false;
+				}
+				@Override
+				public boolean preVisitMethodExecution(MethodExecution methodExecution) {
+					if (methodExecution.getExitTime() < markStart) return true;		// 探索終了
+					if (methodExecution.getEntryTime() > markEnd) return false;
+					int prevBlockId = -1;
+					for (Statement s: methodExecution.getStatements()) {
+						if (s instanceof BlockEnter) {
+							long entryTime = ((BlockEnter)s).getTimeStamp();
+							int curBlockID = ((BlockEnter)s).getBlockId();
+							if (entryTime >= markStart && entryTime <= markEnd) {
+								if (prevBlockId != -1) {
+									flows.add(methodExecution.getSignature() + ":" + prevBlockId + ":" + curBlockID);
+								} else {
+									flows.add(methodExecution.getSignature() + ":" + curBlockID);
+								}
+							}
+							prevBlockId = curBlockID;
+						}
+					}
+					return false;
+				}
+				@Override
+				public boolean postVisitMethodExecution(MethodExecution methodExecution, ArrayList<MethodExecution> children) {
+					return false;
+				}
+			});
+		}	
+		return flows;
+	}
+
+	public static HashMap<String, ClassInfo> getClasses() {
+		return getInstance().classes;
+	}
+	
+	public static HashMap<String, ThreadInstance> getThreads() {
+		return getInstance().threads;
+	}
+	
+	public static synchronized void onlineTraceClassDefinition(String className, String classPath, String loaderPath) {
+		// classPathとloaderPathについては先頭の / を取り除いて記録する (readJSON内での処理と同等になる)
+		initializeClass(className, classPath.substring(1), loaderPath.substring(1));
+	}
+	
+	public static synchronized void onlineTracePreCallMethod(String signature, String threadId, String lineNum) {
+		getInstance().thread = getInstance().threads.get(threadId);
+		getInstance().thread.preCallMethod(signature, Integer.parseInt(lineNum));
+	}
+	
+	public static synchronized void onlineTraceMethodEntry(String signature, String thisClassName, String thisObjectId, 
+			String threadId, long timeStamp, String argList) {
+		boolean isConstractor = false;
+		boolean isStatic = false;
+		if (signature.contains("static ")) {
+			isStatic = true;
+		}
+		getInstance().thread = getInstance().threads.get(threadId);		
+		Stack<String> stack;
+		if (getInstance().thread  == null) {
+			getInstance().thread = new ThreadInstance(threadId);
+			getInstance().threads.put(threadId, getInstance().thread);
+			stack = new Stack<String>();
+			getInstance().stacks.put(threadId, stack);
+		} else {
+			stack = getInstance().stacks.get(threadId);
+		}
+		stack.push(signature);
+		// メソッド呼び出しの設定
+		getInstance().thread.callMethod(signature, null, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
+		// 引数の設定
+		ArrayList<ObjectReference> arguments = new ArrayList<>();
+		String[] args = argList.split(",");
+		for (int i = 0; i < args.length - 1; i += 2) {
+			arguments.add(new ObjectReference(args[i+1], args[i]));
+		}
+		getInstance().thread.setArgments(arguments);
+	}
+	
+	public static synchronized void onlineTraceConstructorEntry(String signature, String thisClassName, String thisObjectId, 
+			String threadId, long timeStamp, String argList) {
+		boolean isConstractor = true;
+		boolean isStatic = false;
+		getInstance().thread = getInstance().threads.get(threadId);
+		Stack<String> stack;
+		if (getInstance().thread == null) {
+			getInstance().thread = new ThreadInstance(threadId);
+			getInstance().threads.put(threadId, getInstance().thread);
+			stack = new Stack<String>();
+			getInstance().stacks.put(threadId, stack);
+		} else {
+			stack = getInstance().stacks.get(threadId);
+		}
+		stack.push(signature);
+		// メソッド呼び出しの設定
+		getInstance().thread.callMethod(signature, null, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
+		// 引数の設定
+		ArrayList<ObjectReference> arguments = new ArrayList<>();
+		String[] args = argList.split(",");
+		for (int i = 0; i < args.length - 1; i += 2) {
+			arguments.add(new ObjectReference(args[i+1], args[i]));
+		}
+		getInstance().thread.setArgments(arguments);
+	}
+	
+	public static synchronized void onlineTraceMethodExit(String shortSignature, String thisClassName, String thisObjectId, 
+			String returnClassName, String returnObjectId, String threadId, long timeStamp) {
+		Stack<String> stack = getInstance().stacks.get(threadId);
+		if (!stack.isEmpty()) {
+			String line2 = stack.peek();
+			if (line2.endsWith(shortSignature)) {
+				stack.pop();
+			} else {
+				do {
+					stack.pop();
+					getInstance().thread.terminateMethod();
+					if (stack.isEmpty()) break;
+					line2 = stack.peek();
+				} while (!stack.isEmpty() && !line2.endsWith(shortSignature));
+				if (!stack.isEmpty()) stack.pop();
+			}
+			getInstance().thread = getInstance().threads.get(threadId);
+			ObjectReference returnVal = new ObjectReference(returnObjectId, returnClassName);					
+			boolean isCollectionType = false;
+			if(thisClassName.contains("java.util.List")
+					|| thisClassName.contains("java.util.Vector")
+					|| thisClassName.contains("java.util.Iterator")
+					|| thisClassName.contains("java.util.ListIterator")
+					|| thisClassName.contains("java.util.ArrayList")
+					|| thisClassName.contains("java.util.Stack")
+					|| thisClassName.contains("java.util.Hash")
+					|| thisClassName.contains("java.util.Map")
+					|| thisClassName.contains("java.util.Set")
+					|| thisClassName.contains("java.util.Linked")
+					|| thisClassName.contains("java.lang.Thread")) {
+				isCollectionType = true;
+			}
+			// メソッドからの復帰の設定
+			getInstance().thread.returnMethod(returnVal, thisObjectId, isCollectionType, timeStamp);
+		}
+	}
+	
+	public static synchronized void onlineTraceConstructorExit(String shortSignature, String returnClassName, String returnObjectId, 
+			String threadId, long timeStamp) {
+		String thisClassName = returnClassName;
+		String thisObjectId = returnObjectId;
+		Stack<String> stack = getInstance().stacks.get(threadId);
+		if (!stack.isEmpty()) {
+			String line2 = stack.peek();
+			if (line2.endsWith(shortSignature)) {
+				stack.pop();
+			} else {
+				do {
+					stack.pop();
+					getInstance().thread.terminateMethod();
+					if (stack.isEmpty()) break; // この一文を仮に追加(MethodExitの方も同様)
+					line2 = stack.peek();
+				} while (!stack.isEmpty() && !line2.endsWith(shortSignature));
+				if (!stack.isEmpty()) stack.pop();
+			}
+			getInstance().thread = getInstance().threads.get(threadId);
+			ObjectReference returnVal = new ObjectReference(returnObjectId, returnClassName);					
+			boolean isCollectionType = false;
+			if(thisClassName.contains("java.util.List")
+					|| thisClassName.contains("java.util.Vector")
+					|| thisClassName.contains("java.util.Iterator")
+					|| thisClassName.contains("java.util.ListIterator")
+					|| thisClassName.contains("java.util.ArrayList")
+					|| thisClassName.contains("java.util.Stack")
+					|| thisClassName.contains("java.util.Hash")
+					|| thisClassName.contains("java.util.Map")
+					|| thisClassName.contains("java.util.Set")
+					|| thisClassName.contains("java.util.Linked")
+					|| thisClassName.contains("java.lang.Thread")) {
+				isCollectionType = true;
+			}
+			// メソッドからの復帰の設定
+			getInstance().thread.returnMethod(returnVal, thisObjectId, isCollectionType, timeStamp);
+		}
+	}
+	
+	public static synchronized void onlineTraceFieldGet(String fieldName, String thisClassName, String thisObjectId, 
+			String containerClassName, String containerObjectId, String valueClassName, String valueObjectId,
+			String threadId, String lineNum, long timeStamp) {
+		getInstance().thread = getInstance().threads.get(threadId);
+		// フィールドアクセスの設定
+		if (getInstance().thread != null) getInstance().thread.fieldAccess(fieldName, valueClassName, valueObjectId, containerClassName, containerObjectId, thisClassName, thisObjectId, Integer.parseInt(lineNum), timeStamp);
+	}
+	
+	public static synchronized void onlineTraceFieldSet(String fieldName, String containerClassName, String containerObjectId, 
+			String valueClassName, String valueObjectId, String threadId, String lineNum, long timeStamp) {
+		getInstance().thread = getInstance().threads.get(threadId);
+		// フィールド更新の設定
+		if (getInstance().thread != null) getInstance().thread.fieldUpdate(fieldName, valueClassName, valueObjectId, containerClassName, containerObjectId, Integer.parseInt(lineNum), timeStamp);
+	}
+	
+	public static synchronized void onlineTraceArrayCreate(String arrayClassName, String arrayObjectId, String dimension, 
+			String threadId, String lineNum, long timeStamp) {
+		getInstance().thread = getInstance().threads.get(threadId);
+		if (getInstance().thread != null) getInstance().thread.arrayCreate(arrayClassName, arrayObjectId, Integer.parseInt(dimension), Integer.parseInt(lineNum), timeStamp);
+	}
+			
+	public static synchronized void onlineTraceArraySet(String arrayClassName, String arrayObjectId, int index, 
+			String valueClassName, String valueObjectId, String threadId, long timeStamp) {
+		// 配列要素への代入
+		getInstance().thread = getInstance().threads.get(threadId);
+		if (getInstance().thread != null) getInstance().thread.arraySet(arrayClassName, arrayObjectId, index, valueClassName, valueObjectId, 0, timeStamp);
+	}
+	
+	public static synchronized void onlineTraceArrayGet(String arrayClassName, String arrayObjectId, int index, 
+			String valueClassName, String valueObjectId, String threadId, long timeStamp) {
+		// 配列要素の参照
+		getInstance().thread = getInstance().threads.get(threadId);
+		if (getInstance().thread != null) getInstance().thread.arrayGet(arrayClassName, arrayObjectId, index, valueClassName, valueObjectId, 0, timeStamp);
+	}
+
+	public static synchronized void onlineTraceBlockEntry(String blockId, String incomings, 
+			String threadId, String lineNum, long timeStamp) {
+		// ブロックの開始
+		getInstance().thread = getInstance().threads.get(threadId);
+		if (getInstance().thread != null) getInstance().thread.blockEnter(Integer.parseInt(blockId), Integer.parseInt(incomings), Integer.parseInt(lineNum), timeStamp);
+	}
+
+	public static ThreadInstance getThreadInstance(String threadId) {
+		return getInstance().threads.get(threadId);
+	}
+	
+	/**
+	 * 指定したスレッド上で現在実行中のメソッド実行を取得する(オンライン解析用)
+	 * @param thread 対象スレッド
+	 * @return thread 上で現在実行中のメソッド実行
+	 */
+	public static MethodExecution getCurrentMethodExecution(Thread thread) {
+		ThreadInstance t = getInstance().threads.get(String.valueOf(thread.getId()));
+		return t.getCurrentMethodExecution();
+	}
+	
+	/**
+	 * 指定したスレッド上で現在実行中のトレースポイントを取得する(オンライン解析用)
+	 * @param thread 対象スレッド
+	 * @return thread 上で現在実行中の実行文のトレースポイント
+	 */
+	public static TracePoint getCurrentTracePoint(Thread thread) {
+		ThreadInstance t = getInstance().threads.get(String.valueOf(thread.getId()));
+		return t.getCurrentTracePoint();
+	}
+
+	/**
+	 * 引数で渡したコンテナが持つフィールドの最終更新に対応するFieldUpdateを返す
+	 * @param containerObjId
+	 * @param fieldName
+	 * @param thread
+	 * @return
+	 */
+	public static FieldUpdate getRecentlyFieldUpdate(String containerObjId, String fieldName, Thread thread) {
+		TracePoint before = getCurrentTracePoint(thread);
+		if (!before.isValid()) {
+			before.stepBackOver();
+			if (!before.isValid()) {
+				return null; // 逆方向探索でそれ以上辿れなかった場合(rootメソッド実行の1行目など)　これがないと実行時にTimeoutExceptionで落ちる
+			}
+		}
+		TracePoint tp = getFieldUpdateTracePoint(containerObjId, fieldName, before);
+		if (tp != null && tp.getStatement() instanceof FieldUpdate) {
+			return (FieldUpdate)tp.getStatement();				
+		}
+		return null;
+	}
+	
+//	private static TracePoint getRecentlyFieldUpdate(TracePoint tp) {
+//		Statement statement = tp.getStatement();
+//		if (statement instanceof FieldAccess) {
+//			FieldAccess fa = (FieldAccess)statement;
+//			return getFieldUpdateTracePoint(fa.getContainerObjId(), fa.getFieldName(), tp);
+//		}
+//		return null;
+//	}
+
+	/**
+	 * 引数で指定したコンテナの持つ特定のフィールドが最後に更新されたstatementを逆方向に探索して、<br>
+	 * 見つかったstatementに対応するTracePointを返す
+	 * @param containerObjId
+	 * @param fieldName
+	 * @param before
+	 * @return
+	 */
+	public static TracePoint getFieldUpdateTracePoint(final String containerObjId, final String fieldName, TracePoint before) {		
+		before = before.duplicate();
+		before = getInstance().traverseStatementsInTraceBackward(new IStatementVisitor() {
+			@Override
+			public boolean preVisitStatement(Statement statement) {
+				if (statement instanceof FieldUpdate) {
+					FieldUpdate fu = (FieldUpdate)statement;					
+					if (fu.getContainerObjId().equals(containerObjId)
+							&& fu.getFieldName().equals(fieldName)) {
+						// コンテナオブジェクトIDとフィールド名が共に一致した場合
+						return true;
+					}
+				}
+				return false;
+			}
+			@Override
+			public boolean postVisitStatement(Statement statement) { return false; }
+		}, before);
+		if (before != null) {
+			return before;			
+		}
+		return null;
+	}
+	
+	/**
+	 * 引数で渡した配列の指定インデックスの最終更新に対応するArrayUpdateを返す
+	 * @param arrayObjId
+	 * @param index
+	 * @param thread
+	 * @return
+	 */
+	public static ArrayUpdate getRecentlyArrayUpdate(String arrayObjId, int index, Thread thread) {
+		TracePoint before = getCurrentTracePoint(thread);
+		if (!before.isValid()) {
+			before.stepBackOver();
+			if (!before.isValid()) {
+				return null; // 逆方向探索でそれ以上辿れなかった場合(rootメソッド実行の1行目など)　これがないと実行時にTimeoutExceptionで落ちる
+			}
+		}
+		TracePoint tp = getArrayUpdateTracePoint(arrayObjId, index, before);
+		if (tp != null && tp.getStatement() instanceof ArrayUpdate) {
+			return (ArrayUpdate)tp.getStatement();
+		}
+		return null;		
+	}
+	
+//	private static TracePoint getRecentlyArrayUpdate(TracePoint tp) {
+//		Statement statement = tp.getStatement();
+//		if (statement instanceof ArrayAccess) {
+//			ArrayAccess aa = (ArrayAccess)statement;
+//			return getArrayUpdateTracePoint(aa.getArrayObjectId(), aa.getIndex(), tp);
+//		}
+//		return null;
+//	}
+
+	/**
+	 * 引数で指定した配列で、かつ指定したインデックスが最後に更新されたstatementを逆方向に探索して、<br>
+	 * 見つかったstatementに対応するTracePointを返す
+	 * @param arrayObjId
+	 * @param index
+	 * @param before
+	 * @return
+	 */
+	public static TracePoint getArrayUpdateTracePoint(final String arrayObjId, final int index, TracePoint before) {		
+		before = before.duplicate();
+		before = getInstance().traverseStatementsInTraceBackward(new IStatementVisitor() {
+			@Override
+			public boolean preVisitStatement(Statement statement) {
+				if (statement instanceof ArrayUpdate) {
+					ArrayUpdate au = (ArrayUpdate)statement;
+					if (au.getArrayObjectId().equals(arrayObjId)
+							&& au.getIndex() == index) {
+						// 配列IDとインデックスが共に一致した場合
+						return true;
+					}
+				}
+				return false;
+			}
+			@Override
+			public boolean postVisitStatement(Statement statement) { return false; }
+		}, before);
+		if (before != null) {
+			return before;			
+		}
+		return null;
+	}
+	
+//	public static ArrayList<Alias> findAllStartAlias(MethodExecution me) {
+//		ArrayList<Alias> startAliasList = new ArrayList<>();
+//		List<Statement> statements = me.getStatements();
+//		String[] primitives = {"byte", "short", "int", "long", "float", "double", "char", "boolean"};
+//		List<String> primitiveList = Arrays.asList(primitives);
+//		for (int i = 0; i < statements.size(); i++) {
+//			TracePoint tp = me.getTracePoint(i);
+//			Statement statement = statements.get(i);
+//			if (statement instanceof FieldAccess) {
+//				FieldAccess fa = (FieldAccess)statement;
+//				String objId = fa.getContainerObjId();
+//				if (objId != null && !(objId.equals("0")) && !(primitiveList.contains(fa.getContainerClassName()))) {
+//					startAliasList.add(new Alias(objId, tp, Alias.OCCURRENCE_EXP_CONTAINER));
+//				}
+//				objId = fa.getValueObjId();
+//				if (objId != null && !(objId.equals("0")) && !(primitiveList.contains(fa.getValueClassName()))) {
+//					startAliasList.add(new Alias(objId, tp, Alias.OCCURRENCE_EXP_FIELD));
+//				}
+//			} else if (statement instanceof FieldUpdate) {
+//				FieldUpdate fu = (FieldUpdate)statement;
+//				String objId = fu.getContainerObjId();
+//				if (objId != null && !(objId.equals("0")) && !(primitiveList.contains(fu.getContainerClassName()))) {
+//					startAliasList.add(new Alias(objId, tp, Alias.OCCURRENCE_EXP_CONTAINER));
+//				}
+//				objId = fu.getValueObjId();
+//				if (objId != null && !(objId.equals("0")) && !(primitiveList.contains(fu.getValueClassName()))) {
+//					startAliasList.add(new Alias(objId, tp, Alias.OCCURRENCE_EXP_FIELD));
+//				}
+//			} else if (statement instanceof ArrayAccess) {
+//				ArrayAccess aa = (ArrayAccess)statement;
+//				String valueObjId = aa.getValueObjectId();
+//				if (valueObjId != null && !(valueObjId.equals("0")) && !(primitiveList.contains(aa.getValueClassName()))) {
+//					startAliasList.add(new Alias(valueObjId, tp, Alias.OCCURRENCE_EXP_ARRAY));
+//				}				
+//			} else if (statement instanceof ArrayUpdate) {
+//				ArrayUpdate au = (ArrayUpdate)statement;
+//				String valueObjId = au.getValueObjectId();
+//				if (valueObjId != null && !(valueObjId.equals("0")) && !(primitiveList.contains(au.getValueClassName()))) {
+//					startAliasList.add(new Alias(valueObjId, tp, Alias.OCCURRENCE_EXP_ARRAY));
+//				}
+//			} else if (statement instanceof ArrayCreate) {
+//				ArrayCreate ac = (ArrayCreate)statement;
+//				String arrayObjId = ac.getArrayObjectId();
+//				if (arrayObjId != null && !(arrayObjId.equals("0")) && !(primitiveList.contains(ac.getArrayClassName()))) {
+//					startAliasList.add(new Alias(arrayObjId, tp, Alias.OCCURRENCE_EXP_RETURN));
+//				}
+//			} else if (statement instanceof MethodInvocation) {
+//				MethodExecution calledMe = ((MethodInvocation)statement).getCalledMethodExecution();
+//				String thisObjId = calledMe.getThisObjId();
+//				if (thisObjId != null && !(thisObjId.equals("0"))) {
+//					startAliasList.add(new Alias(thisObjId, tp, Alias.OCCURRENCE_EXP_RECEIVER));
+//				}
+//				List<ObjectReference> args = calledMe.getArguments();
+//				for (int j = 0; j < args.size(); j++) {
+//					ObjectReference arg = args.get(j);
+//					String argValueId = arg.getId();
+//					if (argValueId != null && !(argValueId.equals("0")) && !(primitiveList.contains(arg.getActualType()))) {
+//						startAliasList.add(new Alias(argValueId, tp, (j + Alias.OCCURRENCE_EXP_FIRST_ARG)));
+//					}
+//				}
+//				ObjectReference returnValue = calledMe.getReturnValue();
+//				if (returnValue != null) {
+//					String returnValueId = returnValue.getId();
+//					if (returnValueId != null && !(returnValueId.equals("0") && !(primitiveList.contains(returnValue.getActualType())))) {
+//						startAliasList.add(new Alias(returnValueId, tp, Alias.OCCURRENCE_EXP_RETURN));
+//					}
+//				}
+//			}
+//		}
+//		return startAliasList;
+//	}
+//
+//	public static Alias getAlias(String objectId, TracePoint occurrencePoint, int occurrenceExp) {
+//		return new Alias(objectId, occurrencePoint, occurrenceExp);
+//	}
+//	
+//	public static ArrayList<ArrayList<Alias>> getObjectFlow(Alias startAlias) {
+//		ArrayList<ArrayList<Alias>> aliasLists = new ArrayList<>();
+//		ArrayList<Alias> aliasList = new ArrayList<>();
+//		aliasLists.add(aliasList);
+////		aliasList.add(alias);
+//		String objId = startAlias.getObjectId();
+//		TracePoint tp = startAlias.getOccurrencePoint().duplicate();
+//		ArrayList<ArrayList<Alias>> resultLists = getObjectFlow(aliasLists, objId, tp, 0);
+////		for (int i = 0; i < resultLists.size(); i++) {
+////			ArrayList<Alias> resultList = resultLists.get(i);
+////			System.out.println("---------------------------------------------------------");		// 確認用
+////			for (Alias alias : resultList) System.out.println(alias);								// 確認用
+////			int lastAliasOccurrenceEXP = resultList.get(resultList.size() - 1).getOccurrenceExp();
+////			if (lastAliasOccurrenceEXP != Alias.OCCURRENCE_EXP_RETURN) {
+////				resultLists.remove(resultList); // 末尾のエイリアスが配列生成やコンストラクタ呼び出しではないリストを削除する
+////			}
+////		}
+//		return resultLists;
+//	}
+//
+//	private static ArrayList<ArrayList<Alias>> getObjectFlow(ArrayList<ArrayList<Alias>> aliasLists, 
+//			String objId, TracePoint tp, int side) {
+//		ArrayList<Alias> aliasList = aliasLists.get(aliasLists.size() - 1); // このgetObjectFlowメソッド実行内で見つかったエイリアスを入れていくリスト
+//		do {
+//			Statement statement = tp.getStatement();
+//			if (statement instanceof FieldAccess) {
+//				// フィールド参照の場合
+//				FieldAccess fa = (FieldAccess)statement;
+//				if (fa.getValueObjId().equals(objId)) {
+//					// 当該地点でのエイリアスをリストに追加した後に, フィールド最終更新に飛ぶパターンとそのまま遡るパターンとで分岐
+//					aliasList.add(new Alias(objId, tp.duplicate(), Alias.OCCURRENCE_EXP_FIELD));
+//					aliasList = new ArrayList<>(aliasList); // リスト自体をディープコピーしておく(フィールド最終更新に飛ぶ再帰処理終了後に, そのまま遡るパターンで用いる)
+//					TracePoint fieldUpdateTp = getRecentlyFieldUpdate(tp);
+//					aliasLists = getObjectFlow(aliasLists, objId, fieldUpdateTp, 0);
+//					aliasLists.add(aliasList); // 再帰処理に入る前にディープコピーしていたリストを最後尾に追加 (以降の遡りによって見つけたエイリアスはこのリストに入れられる)
+//				}
+//			} else if (statement instanceof ArrayAccess) {
+//				// 配列要素参照の場合
+//				ArrayAccess aa = (ArrayAccess)statement;
+//				if (aa.getValueObjectId().equals(objId)) {
+//					aliasList.add(new Alias(objId, tp.duplicate(), Alias.OCCURRENCE_EXP_ARRAY));
+//					aliasList = new ArrayList<>(aliasList);
+//					TracePoint arrayUpdateTp = getRecentlyArrayUpdate(tp);
+//					aliasLists = getObjectFlow(aliasLists, objId, arrayUpdateTp, 0);
+//					aliasLists.add(aliasList);
+//				}
+//			} else if (statement instanceof ArrayCreate) {
+//				// 配列生成の場合
+//				ArrayCreate ac = (ArrayCreate)statement;
+//				if (ac.getArrayObjectId().equals(objId)) {
+//					aliasList.add(new Alias(objId, tp.duplicate(), Alias.OCCURRENCE_EXP_RETURN)); // 配列生成は new 型名[] の戻り値
+//					return aliasLists; // 配列生成箇所はエイリアスの起源なのでそれ以前にはもうないはず
+//				}
+//			} else if (statement instanceof MethodInvocation) {
+//				// メソッド呼び出しの場合
+//				MethodExecution calledMethodExecution = ((MethodInvocation)statement).getCalledMethodExecution();
+//				ObjectReference returnValue = calledMethodExecution.getReturnValue();
+//				if (returnValue.getId().equals(objId)) {
+//					// 戻り値にエイリアスのオブジェクトIDが一致した場合
+//					aliasList.add(new Alias(objId, tp.duplicate(), Alias.OCCURRENCE_EXP_RETURN));
+//					if (calledMethodExecution.isConstructor()) {
+//						return aliasLists; // コンストラクタ呼び出し箇所はエイリアスの起源なのでそれ以前にはもうないはず
+//					}
+//					TracePoint exitTp = calledMethodExecution.getExitPoint(); // 呼び出しメソッド実行の最終ステートメントを指すtpを取得
+//					aliasLists = getObjectFlow(aliasLists, objId, exitTp, side + 1); // 呼び出し先のメソッド実行に潜る
+//					aliasList = aliasLists.get(aliasLists.size() - 1);
+//				}
+//			}
+//		} while (tp.stepBackOver()); // 呼び出し元に戻るかこれ以上辿れなくなるまでループ
+//		if (!tp.isValid()) {
+//			return aliasLists; // これ以上メソッド実行を遡れない場合(mainメソッドのさらに前など)はその時点で終了
+//		}
+//		// --- この時点で tracePointは 呼び出し元を指している (直前まで遡っていたメソッド実行についてのメソッド呼び出しを指している) ---
+//		MethodExecution calledMethodExecution = ((MethodInvocation)tp.getStatement()).getCalledMethodExecution();
+//		ArrayList<ObjectReference> args = calledMethodExecution.getArguments();
+//		for (int i = 0; i < args.size(); i++) {
+//			if (args.get(i).getId().equals(objId)) {
+//				// メソッド呼び出しの実引数にエイリアスのオブジェクトIDが一致した場合
+//				aliasList.add(new Alias(objId, tp.duplicate(), (i + Alias.OCCURRENCE_EXP_FIRST_ARG)));
+//				if (side == 0) {
+//					// 探索開始メソッド実行またはフィールドや配列要素の最終更新探索で飛んだ先のメソッド実行から, スタックトレースでたどれる全メソッド実行の場合
+//					TracePoint previousTp = tp.duplicate();
+//					previousTp.stepBackOver();
+//					aliasLists = getObjectFlow(aliasLists, objId, previousTp, 0); // 呼び出し元のメソッド実行に戻る
+//				}
+//			}
+//		}
+//		return aliasLists;
+//	}
+//	
+//	public static int countMethodExecutionInTraceCollector(List<MethodExecution> methodExecutions, String targetSignature, int count, String indent) {
+//		if (methodExecutions == null || methodExecutions.isEmpty()) {
+//			return count;
+//		}
+//		for (int i = 0; i < methodExecutions.size(); i++) {
+//			MethodExecution me = methodExecutions.get(i);
+//			String signature = me.getSignature();
+////			System.out.println(indent + signature);
+//			if (targetSignature.equals(signature)) {
+//				count++;
+//			}
+//			List<MethodExecution> children = me.getChildren();
+//			count = countMethodExecutionInTraceCollector(children, targetSignature, count, indent + "--------");
+//		}
+//		return count;
+//	}
+	
+	public static void test() {
+		System.out.println("Hello TraceJSON");
+		System.out.println(getInstance().classes);
+		System.out.println("Bye TraceJSON");
+	}
+}

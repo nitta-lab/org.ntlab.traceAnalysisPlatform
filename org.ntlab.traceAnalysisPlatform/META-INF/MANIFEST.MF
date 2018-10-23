@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: Tracer
-Bundle-SymbolicName: org.ntlab.traceCollector;singleton:=true
+Bundle-Name: TraceAnalysisPlatform
+Bundle-SymbolicName: org.ntlab.traceAnalysisPlatform;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: org.ntlab.traceAnalysisPlatform.Activator
 Require-Bundle: org.eclipse.ui,

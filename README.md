@@ -4,4 +4,4 @@ A wide variety of dynamic analysis tools can be developed by extending this plug
 It provides a lightweight trace collection and high performance online analyses.
 A sample analyzer plug-in that extends this plug-in is [here](https://github.com/nitta-lab/org.ntlab.sampleAnalyzer).
 
-This plug-in is built upon [Javassist<](http://www.javassist.org/) and distributed under the LGPL.
+This plug-in is built upon [Javassist](http://www.javassist.org/) and distributed under the LGPL.

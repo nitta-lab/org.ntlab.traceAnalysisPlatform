@@ -75,7 +75,7 @@ public class TracerLaunchConfigurationDelegate extends org.eclipse.jdt.launching
 				ExtensionLoader loader = Activator.getDefault().getLoader();
 				List<String> additionalClasspathList = new ArrayList<>();
 				for (IAdditionalLaunchConfiguration config : loader.getAdditionalLaunchConfigurations()) {
-					for (String additionalClasspath : config.getAdditionalClasspath()) {
+					for (String additionalClasspath : config.getAdditionalClasspaths()) {
 						additionalClasspathList.add(getPath(additionalClasspath));
 					}
 				}

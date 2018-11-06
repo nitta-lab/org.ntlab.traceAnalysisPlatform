@@ -83,8 +83,8 @@ public class InstrumentationHandler extends AbstractHandler {
 					}
 					
 					// インストゥルメンテーションを行う
-					Tracer.initialize(new OutputStatementsGenerator(new JSONTraceGenerator()), cp);		// 引数で出力フォーマットを指定する
-//					Tracer.initialize(new OutputStatementsGenerator(new OnlineTraceGenerator()), cp);	// 引数で出力フォーマットを指定する		
+//					Tracer.initialize(new OutputStatementsGenerator(new JSONTraceGenerator()), cp);		// 引数で出力フォーマットを指定する
+					Tracer.initialize(new OutputStatementsGenerator(new OnlineTraceGenerator()), cp);	// 引数で出力フォーマットを指定する		
 					Tracer.packageInstrumentation("", classPath + "/");
 				} catch (JavaModelException | NotFoundException e) {
 					e.printStackTrace();

@@ -5,3 +5,5 @@ It provides a lightweight trace collection and high performance online analyses 
 A sample analyzer plug-in that extends this plug-in is [here](https://github.com/nitta-lab/org.ntlab.sampleAnalyzer).
 
 This plug-in is built upon [Javassist](http://www.javassist.org/) and distributed under the LGPL.
+
+For more information, please refer to <a href="https://github.com/nitta-lab/org.ntlab.traceAnalysisPlatform/wiki/Trace-Analysis-Platform-Quick-Guide">Quick Guide</a>.

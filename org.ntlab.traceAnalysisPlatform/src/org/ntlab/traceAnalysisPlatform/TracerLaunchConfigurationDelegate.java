@@ -76,15 +76,15 @@ public class TracerLaunchConfigurationDelegate extends org.eclipse.jdt.launching
 				List<String> additionalClasspathList = new ArrayList<>();
 				for (IAdditionalLaunchConfiguration config : loader.getAdditionalLaunchConfigurations()) {
 					for (String additionalClasspath : config.getAdditionalClasspath()) {
-						additionalClasspathList.add(additionalClasspath);
+						additionalClasspathList.add(getPath(additionalClasspath));
 					}
 				}
 				String[] additionalClasspaths = additionalClasspathList.toArray(new String[additionalClasspathList.size()]);
 				
 				classpath = new String[configClasspath.length + 2 + additionalClasspaths.length];
 				System.arraycopy(configClasspath, 0, classpath, 0, configClasspath.length);
-				classpath[configClasspath.length]		= tracerClassPath.substring(1, tracerClassPath.length() - Tracer.TRACER_CLASS_PATH.length());
-				classpath[configClasspath.length + 1]	= bundlePath.substring(1) + Tracer.JAVASSIST_LIBRARY;
+				classpath[configClasspath.length]		= getPath(tracerClassPath.substring(0, tracerClassPath.length() - Tracer.TRACER_CLASS_PATH.length()));
+				classpath[configClasspath.length + 1]	= getPath(bundlePath + Tracer.JAVASSIST_LIBRARY);
 				System.arraycopy(additionalClasspaths, 0, classpath, configClasspath.length + 2, additionalClasspaths.length);
 
 				for (int i = 0; i < classpath.length; i++) {
@@ -146,5 +146,14 @@ public class TracerLaunchConfigurationDelegate extends org.eclipse.jdt.launching
 		IVMInstall vm = verifyVMInstall(configuration);
 		IVMRunner runner = vm.getVMRunner(mode);
 		return runner;
+	}
+
+	private String getPath(String location) {
+		System.out.println(location);
+		if (location.indexOf('/') >= 0) {
+			return location.substring(location.indexOf('/')).split("!/")[0];		
+		} else {
+			return location.split("!/")[0];
+		}
 	}
 }

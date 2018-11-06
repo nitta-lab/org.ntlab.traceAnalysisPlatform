@@ -50,8 +50,10 @@ public class InstrumentationHandler extends AbstractHandler {
 					try {
 						String bundlePath = FileLocator.resolve(Activator.getDefault().getBundle().getEntry("/")).getPath();
 						String tracerClassPath = FileLocator.resolve(this.getClass().getClassLoader().getResource(Tracer.TRACER_CLASS_PATH)).getPath();
-						cp.appendClassPath(tracerClassPath.substring(1, tracerClassPath.length() - Tracer.TRACER_CLASS_PATH.length()));
-						cp.appendClassPath(bundlePath.substring(1) + Tracer.JAVASSIST_LIBRARY);
+						System.out.println(bundlePath);
+						System.out.println(tracerClassPath);
+						cp.appendClassPath(getPath(tracerClassPath.substring(0, tracerClassPath.length() - Tracer.TRACER_CLASS_PATH.length())));
+						cp.appendClassPath(getPath(bundlePath + Tracer.JAVASSIST_LIBRARY));
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -92,4 +94,11 @@ public class InstrumentationHandler extends AbstractHandler {
 		return null;
 	}
 
+	private String getPath(String location) {
+		if (location.indexOf('/') >= 0) {
+			return location.substring(location.indexOf('/')).split("!/")[0];		
+		} else {
+			return location.split("!/")[0];
+		}
+	}
 }

@@ -23,6 +23,7 @@ import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.ntlab.traceAnalysisPlatform.Activator;
+import org.ntlab.traceAnalysisPlatform.tracer.ITraceGenerator;
 import org.ntlab.traceAnalysisPlatform.tracer.JSONTraceGenerator;
 import org.ntlab.traceAnalysisPlatform.tracer.OnlineTraceGenerator;
 import org.ntlab.traceAnalysisPlatform.tracer.OutputStatementsGenerator;
@@ -34,7 +35,7 @@ import org.ntlab.traceAnalysisPlatform.tracer.Tracer;
  * @author Nitta
  *
  */
-public class InstrumentationHandler extends AbstractHandler {
+public abstract class InstrumentationHandler extends AbstractHandler {
 
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
@@ -84,7 +85,8 @@ public class InstrumentationHandler extends AbstractHandler {
 					
 					// インストゥルメンテーションを行う
 //					Tracer.initialize(new OutputStatementsGenerator(new JSONTraceGenerator()), cp);		// 引数で出力フォーマットを指定する
-					Tracer.initialize(new OutputStatementsGenerator(new OnlineTraceGenerator()), cp);	// 引数で出力フォーマットを指定する		
+//					Tracer.initialize(new OutputStatementsGenerator(new OnlineTraceGenerator()), cp);	// 引数で出力フォーマットを指定する	
+					Tracer.initialize(new OutputStatementsGenerator(getGenerator()), cp);	// 引数で出力フォーマットを指定する
 					Tracer.packageInstrumentation("", classPath + "/");
 				} catch (JavaModelException | NotFoundException e) {
 					e.printStackTrace();
@@ -93,6 +95,8 @@ public class InstrumentationHandler extends AbstractHandler {
 		}
 		return null;
 	}
+	
+	public abstract ITraceGenerator getGenerator();
 
 	private String getPath(String location) {
 		if (location.indexOf('/') >= 0) {

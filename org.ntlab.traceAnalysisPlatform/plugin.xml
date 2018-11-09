@@ -4,42 +4,49 @@
    <extension-point id="additionalClasspaths" name="%ExtPoint.additionalClasspaths" schema="schema/additionalClasspaths.exsd"/>
 	<!-- プロジェクト全体に対してインストゥルメンテーションを行う -->
 	<extension
-			point="org.eclipse.ui.commands">
-		<category
-				name="Analyzer Category"
-				id="org.ntlab.traceAnalysisPlatform.commands.category">
-		</category>
-		<command
-				name="Instrumentation Command"
-				categoryId="org.ntlab.traceAnalysisPlatform.commands.category"
-				id="org.ntlab.traceAnalysisPlatform.commands.instrumentation">
-		</command>
-	</extension>
-	<extension
 			point="org.eclipse.ui.handlers">
-		<handler
-				commandId="org.ntlab.traceAnalysisPlatform.commands.instrumentation"
-				class="org.ntlab.traceAnalysisPlatform.handlers.InstrumentationHandler">
-		</handler>
+	  	<handler
+	        	class="org.ntlab.traceAnalysisPlatform.handlers.InstrumentationHandlerForOnlineAnalysis"
+	        	commandId="org.ntlab.traceAnalysisPlatform.commands.instrumentationForOnlineAnalysis">
+	  	</handler>
+  		<handler
+        		class="org.ntlab.traceAnalysisPlatform.handlers.InstrumentationHandlerForOfflineAnalysis"
+        		commandId="org.ntlab.traceAnalysisPlatform.commands.instrumentationForOfflineAnalysis">
+  		</handler>
 	</extension>
 	<extension
 			point="org.eclipse.ui.menus">
 		<menuContribution
 				locationURI="popup:org.eclipse.ui.popup.any?after=additions">
-			<command
-					commandId="org.ntlab.traceAnalysisPlatform.commands.instrumentation"
-					id="org.ntlab.traceAnalysisPlatform.menus.instrumentation"
-					label="Instrumentation">
-				<visibleWhen>
-					<with
-							variable="selection">
-						<iterate>
-							<adapt
-								type="org.eclipse.core.resources.IProject">
-							</adapt>
-						</iterate>
-					</with>
-				</visibleWhen>
+   			<command
+         			commandId="org.ntlab.traceAnalysisPlatform.commands.instrumentationForOnlineAnalysis"
+			        id="org.ntlab.traceAnalysisPlatform.menus.instrumentationForOnlineAnalysis"
+			        label="Instrumentation for Online Analysis">
+		      	<visibleWhen>
+		        	 <with
+		           		    variable="selection">
+		           		 <iterate>
+		              		 <adapt
+		                    	 type="org.eclipse.core.resources.IProject">
+		              		 </adapt>
+		          		  </iterate>
+		        	 </with>
+		      	</visibleWhen>
+		   </command>
+		   <command
+			         commandId="org.ntlab.traceAnalysisPlatform.commands.instrumentationForOfflineAnalysis"
+			         id="org.ntlab.traceAnalysisPlatform.menus.instrumentationForOfflineAnalysis"
+			         label="Instrumentation for Offline Analysis">
+		      	<visibleWhen>
+		         	<with
+		               		variable="selection">
+		            	<iterate>
+		               		<adapt
+		                     	type="org.eclipse.core.resources.IProject">
+		               		</adapt>
+		            	</iterate>
+		         	</with>
+		      	</visibleWhen>
 			</command>
 		</menuContribution>
 	</extension>

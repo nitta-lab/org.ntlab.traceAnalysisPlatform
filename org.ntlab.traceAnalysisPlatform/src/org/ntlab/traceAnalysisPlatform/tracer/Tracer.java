@@ -27,7 +27,7 @@ import javassist.expr.NewArray;
 import javassist.expr.NewExpr;
 
 /**
- * トレース出力文を対象パッケージ内に織り込むクラス
+ * The class that embeds into the specified package the statements that output traces
  * 
  * @author Nitta
  *
@@ -46,41 +46,39 @@ public class Tracer {
 	private static CodeConverter conv = null;
 
 	public static void main(String[] args) {
-		initialize(new OutputStatementsGenerator(new JSONTraceGenerator()));		// 引数で出力フォーマットを指定する		
+		initialize(new OutputStatementsGenerator(new JSONTraceGenerator()));		// Specify the output format by the instance of ITraceGenerator
 		ClassLoader loader = Thread.currentThread().getContextClassLoader();
 		URL resource = loader.getResource("");
 		try {
 			String classPath = URLDecoder.decode(resource.getPath(), "UTF-8");
-			packageInstrumentation("worstCase/", classPath);							// 指定したパッケージ内の全クラスにインストゥルメンテーションを行う
+			packageInstrumentation("worstCase/", classPath);							// Instrument the all classes under the specified package
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
-		} 
+		}
 	}
 	
 	/**
-	 * 出力文生成器を指定してインストゥルメンテーションの初期化を行う
+	 * Initialize the instrumentation by specifying an output statements generator
 	 * 
-	 * @param outputStatementsGenerator 出力文生成器(出力フォーマットを指定できる)
+	 * @param outputStatementsGenerator a generator of the statements that output traces
 	 */
 	public static void initialize(OutputStatementsGenerator outputStatementsGenerator) {
 		initialize(outputStatementsGenerator, ClassPool.getDefault());
 	}
 
 	/**
-	 * 出力文生成器を指定してインストゥルメンテーションの初期化を行う
+	 * Initialize the instrumentation by specifying an output statements generator and a class pool
 	 * 
-	 * @param outputStatementsGenerator 出力文生成器(出力フォーマットを指定できる)
-	 * @param cp Javassistのクラスプール
+	 * @param outputStatementsGenerator	a generator of the statements that output traces
+	 * @param cp						a ClassPool object
 	 */
 	public static void initialize(OutputStatementsGenerator outputStatementsGenerator, ClassPool cp) {
-		// 配列へのアクセスの検出]
 		Tracer.cp = cp;
-		Tracer.outputStatementsGenerator = outputStatementsGenerator;	// 引数で出力フォーマットを指定する
+		Tracer.outputStatementsGenerator = outputStatementsGenerator;
 		Tracer.conv = new CodeConverter();
-		if (!(Tracer.outputStatementsGenerator.getGenerator() instanceof PlainTextTraceGenerator)) {
+		if (outputStatementsGenerator.getGenerator().getArrayAdvisorClassName() != null) {
 			try {
-//				CtClass cc = cp.get(TRACER + "JSONArrayAdvisor");		// JSONの場合のみ配列アクセスを出力する
-				CtClass cc = cp.get(TRACER + "OnlineArrayAdvisor");		// オンライン解析の場合に配列アクセスを出力する
+				CtClass cc = cp.get(TRACER + outputStatementsGenerator.getGenerator().getArrayAdvisorClassName());	// To collect array accesses by Javassist
 				conv.replaceArrayAccess(cc, new CodeConverter.DefaultArrayAccessReplacementMethodNames());
 			} catch (NotFoundException e1) {
 				e1.printStackTrace();
@@ -89,10 +87,10 @@ public class Tracer {
 	}
 
 	/**
-	 * 指定したパッケージ内のクラスにインストゥルメンテーションを行う
+	 * Instrument the all classes under a specified package
 	 * 
-	 * @param packageName パッケージ名
-	 * @param classPath 出力するクラスファイルのクラスパス(null の場合は出力しない)
+	 * @param packageName	the name of a package where the classes are instrumented
+	 * @param classPath		the base path of the class files to be output (null for not output)
 	 */
 	public static void packageInstrumentation(String packageName, String classPath) {
 		File dir;
@@ -108,10 +106,10 @@ public class Tracer {
 	}
 
 	/**
-	 * 指定したクラスにインストゥルメンテーションを行う
+	 * Instrument the specified class
 	 * 
-	 * @param className クラス名
-	 * @param classPath 出力するクラスファイルのクラスパス(null の場合は出力しない)
+	 * @param className the name of the class to instrument
+	 * @param classPath the base path of the class files to be output (null for not output)
 	 */
 	public static void classInstrumentation(String className, String classPath) {
 		try {
@@ -125,10 +123,10 @@ public class Tracer {
 	}
 
 	/**
-	 * 指定したクラスにインストゥルメンテーションを行う
+	 * Instrument the specified class
 	 * 
-	 * @param cc Javassistのクラスオブジェクト
-	 * @param classPath 出力するクラスファイルのクラスパス(null の場合は出力しない)
+	 * @param cc		a class object of Javassist
+	 * @param classPath	the base path of the class files to be output (null for not output)
 	 */
 	public static void classInstrumentation(CtClass cc, String classPath) throws BadBytecode, NotFoundException, CannotCompileException, IOException {
 		classInitializerInstrumentation(cc, cc.getClassInitializer());
@@ -150,7 +148,7 @@ public class Tracer {
 			}
 			System.out.println(classPath + ":" + cc.getName());
 //			cc.rebuildClassFile();
-			cc.getClassFile().compact();		// これがないと、実行時に java.lang.ClassFormatError: Truncated class file で落ちる
+			cc.getClassFile().compact();		// Without this, a runtime error (java.lang.ClassFormatError: Truncated class file) occurs
 			cc.debugWriteFile(classPath);
 //			cc.defrost();
 			cc.detach();
@@ -165,12 +163,13 @@ public class Tracer {
 		}
 		classInitializer.insertBefore(outputStatementsGenerator.generateInsertBeforeStatementsForClassDefinition(cc, classInitializer));
 		if (classInitializer.getMethodInfo().getCodeAttribute() != null) {
-			classInitializer.getMethodInfo().getCodeAttribute().computeMaxStack();		// これがないと、実行時に  java.lang.VerifyError: Stack map does not match the one at exception handler... で落ちる
+			classInitializer.getMethodInfo().getCodeAttribute().computeMaxStack();		// Without this, a runtime error (java.lang.VerifyError: Stack map does not match the one at exception handler...) occurs
 		}
 	}
 
 	private static void methodInstrumentation(final CtClass cc, final CtBehavior m) throws BadBytecode, NotFoundException, CannotCompileException {
-		// メソッド本体内の各ブロックの最初に出力文を挿入する(出力文の挿入でブロックが増えてしまうので、先に挿入しておく)
+		// Insert the set of output statements at the entry of each basic block in the body of method m. 
+		//  (Since every set of output statements is inserted as a new basic block, the sets of output statements for basic blocks are inserted first.)
 		Block[] blocks = null;
 		if (m instanceof CtMethod && !m.isEmpty()) {
 			ControlFlow cf = new ControlFlow((CtMethod)m);
@@ -220,16 +219,16 @@ public class Tracer {
 			}
 		}
 		
-		// メソッド本体内のフィールドアクセスとメソッド呼び出しを置き換える
+		// Replace field accesses and method invocations in the method body with the sets of output stataments
 		m.instrument(new ExprEditor() {
 			public void edit(FieldAccess f) throws CannotCompileException {
 				try {
 					if (f.isReader()) {
-						if (!f.getFieldName().contains("$")) {		// AspectJでは final local 変数からのゲットは無視されるので、それに合わせて除外する
+						if (!f.getFieldName().contains("$")) {		// For the compatibility with AspectJ version. (Access to a final local variable is ignored in AspectJ.)
 							f.replace(outputStatementsGenerator.generateReplaceStatementsForFieldGet(cc, m, f, f.getLineNumber()));
 						}
 					} else {
-						if (!f.getFieldName().contains("$")) {		// この条件がないとなぜか落ちる（無名フィールド?へのセットがあって、それを拾って落ちてる?）
+						if (!f.getFieldName().contains("$")) {		// Without this condition, for some reason, the instrumented program terminates. 
 							f.replace(outputStatementsGenerator.generateReplaceStatementsForFieldSet(cc, f, f.getLineNumber()));
 						}
 					}
@@ -242,10 +241,10 @@ public class Tracer {
 					CtMethod m = c.getMethod();
 					String className = m.getDeclaringClass().getName();
 					if (!className.startsWith(STANDARD_LIB) && !className.startsWith(TRACER)) {
-						// 通常のメソッドの呼び出し
+						// Normal method invocation
 						c.replace(outputStatementsGenerator.generateReplaceStatementsForCall(m.getDeclaringClass(), m, c.getLineNumber(), true));
 					} else if (className.matches(STANDARD_CLASSES) && !m.getLongName().matches(EXCEPT_FOR_METHODS)) {
-						// 標準クラスのメソッド呼び出し（呼び出し先にバイトコードを埋め込めない）							
+						// Invocation of a method in a standard class （Instrumentation to the callee is not allowed.）							
 						c.replace(outputStatementsGenerator.generateReplaceStatementsForCall(m.getDeclaringClass(), m, c.getLineNumber(), false));
 					}
 				} catch (NotFoundException e) {
@@ -257,10 +256,10 @@ public class Tracer {
 					CtConstructor m = n.getConstructor();
 					String className = m.getDeclaringClass().getName();
 					if (!className.startsWith(STANDARD_LIB) && !className.startsWith(TRACER)) {
-						// 通常のコンストラクタの呼び出し
+						// Normal constructor invocation
 						n.replace(outputStatementsGenerator.generateReplaceStatementsForCall(m.getDeclaringClass(), m, n.getLineNumber(), true));
 					} else if (m.getDeclaringClass().getName().matches(CONCRETE_STANDARD_CLASSES)) {
-						// 標準クラスのコンストラクタ呼び出し（呼び出し先にバイトコードを埋め込めない）							
+						// Invocation of a constructor in a standard class （Instrumentation to the callee is not allowed.）
 						n.replace(outputStatementsGenerator.generateReplaceStatementsForCall(m.getDeclaringClass(), m, n.getLineNumber(), false));
 					}
 				} catch (NotFoundException e) {
@@ -282,20 +281,20 @@ public class Tracer {
 //			}
 		});
 		
-		// メソッド用の出力文を生成する
+		// Generate output statements for the method.
 		if (!m.isEmpty()) {
-			// メソッドの実行前後に出力文を挿入する
+			// Insert output statements before and after the method body.
 			m.insertBefore(outputStatementsGenerator.generateInsertBeforeStatementsForMethodBody(cc, m));
 			m.insertAfter(outputStatementsGenerator.generateInsertAfterStatementsForMethodBody(cc, m));
 		} else {
-			// メソッド本体が空のときはコンストラクタの場合のみ(=デフォルトコンストラクタ)本体に出力文を設定する
+			// If the method body is empty and the method is a constructor (i.e., a default constructor), generate insert output statements for it.
 			if (m instanceof CtConstructor) {
 				m.setBody(outputStatementsGenerator.generateInsertAfterStatementsForMethodBody(cc, m));
 				m.insertBefore(outputStatementsGenerator.generateInsertBeforeStatementsForMethodBody(cc, m));
 			}
 		}
 		if (m.getMethodInfo().getCodeAttribute() != null) {
-			m.getMethodInfo().getCodeAttribute().computeMaxStack();		// これがないと、実行時に  java.lang.VerifyError: Stack map does not match the one at exception handler... で落ちる
+			m.getMethodInfo().getCodeAttribute().computeMaxStack();		// Without this, a runtime error (java.lang.VerifyError: Stack map does not match the one at exception handler...) occurs
 		}
 	}
 }

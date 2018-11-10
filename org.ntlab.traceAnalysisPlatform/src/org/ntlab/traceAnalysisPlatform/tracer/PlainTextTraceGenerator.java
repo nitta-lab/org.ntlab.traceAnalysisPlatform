@@ -8,7 +8,7 @@ import javassist.CtConstructor;
 import javassist.CtMethod;
 
 /**
- * 従来のトレース出力用の実行文生成器
+ * Plain text trace specific part of OutputStatementsGenerator (for backward compatibility)
  * @author Nitta
  *
  */
@@ -51,7 +51,7 @@ public class PlainTextTraceGenerator implements ITraceGenerator {
 		String methodOutput = "";
 		String classOutput = "";
 		String argsOutput = "";
-		// 引数の出力
+		// For output arguments
 		String delimiter = Tracer.TRACER + "MyPrintStream.println(\"Args:\" + ";
 		for (int p = 0; p < argClasses.size(); p++) {
 			argsOutput += delimiter + argClasses.get(p) + " + \":\" + " + argObjects.get(p);
@@ -61,7 +61,7 @@ public class PlainTextTraceGenerator implements ITraceGenerator {
 			argsOutput += " + " + LINE_AND_THREAD + threadId + ");";
 		}
 		if (m instanceof CtConstructor) {
-			// コンストラクタの場合
+			// For a constructor
 			newOutput = Tracer.TRACER + "MyPrintStream.println(\"New \" + " + thisClass + " + \":\" + " + thisObject + " + " + LINE_AND_THREAD + threadId + ");";
 		}
 		methodOutput = Tracer.TRACER + "MyPrintStream.println(\"Method \" + " + thisClass + " + \",\" + " + methodSignature
@@ -79,17 +79,17 @@ public class PlainTextTraceGenerator implements ITraceGenerator {
 		String shortName = null;
 		String invocationType = null;
 		if (m instanceof CtConstructor) {
-			// コンストラクタの場合
-			shortName = m.getName().replace('$', '.') + "()";	// AspectJではメソッドシグニチャ内では無名クラスはドットで区切られる
+			// For a constructor
+			shortName = m.getName().replace('$', '.') + "()";	// The name of an anonymous class is delimited by '.' within a method signature by AspectJ.
 			invocationType = "initialization";
 		} else {
-			// 通常のメソッドもしくはstaticメソッドの場合
-			shortName = cls.getSimpleName().replace('$', '.') + "." + m.getName() + "()";	// AspectJではメソッドシグニチャ内では無名クラスはドットで区切られる
+			// For a normal or static method
+			shortName = cls.getSimpleName().replace('$', '.') + "." + m.getName() + "()";	// The name of an anonymous class is delimited by '.' within a method signature by AspectJ
 			if (!isCallerSideInstrumentation) {
-				// 呼び出し先に埋め込む場合(通常)
+				// In the case of callee instrumentation (normal case)
 				invocationType = "execution";
 			} else {
-				// 呼出し元に埋め込む場合(標準クラスの呼出し)
+				// In the case of caller instrumentation (invocation of a standard class method)
 				invocationType = "call";
 			}
 		}
@@ -116,5 +116,10 @@ public class PlainTextTraceGenerator implements ITraceGenerator {
 	public String generateInsertBeforeStatementsForClassDefinition(
 			String className, String classPath, String loaderPath) {
 		return "";
+	}
+
+	@Override
+	public String getArrayAdvisorClassName() {
+		return null;
 	}
 }

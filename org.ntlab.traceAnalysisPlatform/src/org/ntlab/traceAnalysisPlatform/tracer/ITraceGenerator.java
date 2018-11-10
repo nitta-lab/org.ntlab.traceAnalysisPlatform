@@ -7,12 +7,11 @@ import javassist.CtClass;
 import javassist.CtMethod;
 
 /**
- * トレース出力を行う実行文生成器のフォーマット依存部分
+ * Output format dependent part of OutputStatementsGenerator
  * @author Nitta
  *
  */
 public interface ITraceGenerator {
-
 	public abstract String generateReplaceStatementsForFieldSet(
 			String fieldName, String containerClass, String containerObject, 
 			String valueClass, String valueObject, 
@@ -50,5 +49,7 @@ public interface ITraceGenerator {
 
 	public abstract String generateInsertBeforeStatementsForClassDefinition(
 			String className, String classPath, String loaderPath);
+
+	public abstract String getArrayAdvisorClassName();
 
 }

@@ -10,7 +10,7 @@ import javassist.CtConstructor;
 import javassist.CtMethod;
 
 /**
- * JSONトレース出力用の実行文生成器
+ * JSON trace specific part of OutputStatementsGenerator
  * @author Nitta
  *
  */
@@ -113,7 +113,7 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		} else {
 			keys.add("type");		values.add(DQ_GEN + " + \"constructorExit\" + " + DQ_GEN);			
 		}
-		keys.add("shortSignature");	values.add(DQ_GEN + " + \"" + m.getLongName().replace('$', '.') + "\" + " + DQ_GEN);		// AspectJではメソッドシグニチャ内では無名クラスはドットで区切られる
+		keys.add("shortSignature");	values.add(DQ_GEN + " + \"" + m.getLongName().replace('$', '.') + "\" + " + DQ_GEN);		// The name of an anonymous class is delimited by '.' within a method signature by AspectJ.
 		if (!(m instanceof CtConstructor)) {
 			keys.add("receiver");	values.add(generateJSONObjectGenerator(thisClass, thisObject));
 		}
@@ -128,7 +128,7 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		ArrayList<String> keys = new ArrayList<>();
 		ArrayList<String> values = new ArrayList<>();
 		keys.add("type");					values.add(DQ_GEN + " + \"methodCall\" + " + DQ_GEN);
-		keys.add("callerSideSignature");	values.add(DQ_GEN + " + \"" + m.getLongName().replace('$', '.') + "\" + " + DQ_GEN);		// AspectJではメソッドシグニチャ内では無名クラスはドットで区切られる
+		keys.add("callerSideSignature");	values.add(DQ_GEN + " + \"" + m.getLongName().replace('$', '.') + "\" + " + DQ_GEN);		// The name of an anonymous class is delimited by '.' within a method signature by AspectJ.
 		keys.add("threadId");				values.add(threadId);
 		keys.add("lineNum");				values.add(lineNum);
 		return Tracer.TRACER + "MyPrintStream.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
@@ -141,7 +141,7 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		ArrayList<String> keys = new ArrayList<>();
 		ArrayList<String> values = new ArrayList<>();
 		keys.add("type");				values.add(DQ_GEN + " + \"blockEntry\" + " + DQ_GEN);
-		keys.add("methodSignature");	values.add(DQ_GEN + " + \"" + m.getLongName().replace('$', '.') + "\" + " + DQ_GEN);		// AspectJではメソッドシグニチャ内では無名クラスはドットで区切られる
+		keys.add("methodSignature");	values.add(DQ_GEN + " + \"" + m.getLongName().replace('$', '.') + "\" + " + DQ_GEN);		// The name of an anonymous class is delimited by '.' within a method signature by AspectJ.
 		keys.add("blockId");			values.add(blockId);
 //		keys.add("blockPos");			values.add(blockPos);
 //		keys.add("blockLen");			values.add(blockLen);
@@ -233,5 +233,10 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		}
 		mapJSON += "}";
 		return mapJSON;
+	}
+
+	@Override
+	public String getArrayAdvisorClassName() {
+		return "JSONArrayAdvisor";
 	}
 }

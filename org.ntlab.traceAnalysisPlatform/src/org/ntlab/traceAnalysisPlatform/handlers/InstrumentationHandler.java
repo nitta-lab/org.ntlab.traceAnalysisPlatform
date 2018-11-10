@@ -8,10 +8,12 @@ import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.internal.localstore.FileSystemResourceManager;
 import org.eclipse.core.internal.resources.Workspace;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -37,8 +39,13 @@ public abstract class InstrumentationHandler extends AbstractHandler {
 		ISelection selection = HandlerUtil.getActiveMenuSelection(event);
 		if (selection instanceof IStructuredSelection) {
 			Object project = ((IStructuredSelection)selection).getFirstElement();
-			if (project instanceof IJavaProject) {
-				IJavaProject javaProject = (IJavaProject)project;
+			IJavaProject javaProject = null;
+			if (project instanceof IJavaProject) { 
+				javaProject = (IJavaProject)project;
+			} else if (project instanceof IProject) {
+				javaProject = JavaCore.create((IProject)project);
+			}
+			if (javaProject != null) {
 				try {
 					// Enable ClassPool of Javassist to find the classes in Javassist itself and in this plug-in.
 					ClassPool cp = new ClassPool(true);

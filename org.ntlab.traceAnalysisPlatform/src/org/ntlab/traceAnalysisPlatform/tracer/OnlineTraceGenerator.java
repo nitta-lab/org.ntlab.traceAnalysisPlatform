@@ -11,7 +11,7 @@ import javassist.CtConstructor;
 import javassist.CtMethod;
 
 /**
- * オンライン解析用の実行文生成器
+ * Online trace specific part of OutputStatementsGenerator (for offline analysis)
  * @author Isitani
  *
  */
@@ -22,7 +22,7 @@ public class OnlineTraceGenerator implements ITraceGenerator {
 			String fieldName, String containerClass, String containerObject, 
 			String valueClass, String valueObject,
 			String threadId, String lineNum, String timeStamp) {
-		// 埋め込み処理
+		// Do embedding
 		String proceed = "$proceed($$); ";
 		StringBuilder embedded = new StringBuilder();
 		embedded.append(Tracer.TRACER + "OnlineTraceOutput.onlineTraceFieldSet(");
@@ -39,7 +39,7 @@ public class OnlineTraceGenerator implements ITraceGenerator {
 			String containerClass, String containerObject,
 			String valueClass, String valueObject, 
 			String threadId, String lineNum, String timeStamp) {
-		// 埋め込み処理
+		// Do embedding
 		String proceed = "$_ = $proceed(); ";
 		StringBuilder embedded = new StringBuilder();
 		embedded.append(Tracer.TRACER + "OnlineTraceOutput.onlineTraceFieldGet(");
@@ -55,7 +55,7 @@ public class OnlineTraceGenerator implements ITraceGenerator {
 	public String generateReplaceStatementsForNewArray(
 			String arrayClass, String arrayObject, String dimension, 
 			String threadId, String lineNum, String timeStamp) {
-		// 埋め込み処理
+		// Do embedding
 		String proceed = "$_ = $proceed($$); ";
 		StringBuilder embedded = new StringBuilder();
 		embedded.append(Tracer.TRACER + "OnlineTraceOutput.onlineTraceArrayCreate(");
@@ -71,19 +71,19 @@ public class OnlineTraceGenerator implements ITraceGenerator {
 			String thisClass, String thisObject,
 			List<String> argClasses, List<String> argObjects, 
 			String threadId, String timeStamp) {		
-		// 埋め込み処理で呼び出すメソッドに渡す引数のうち、引数データを文字列連結で作成する
+		// Make the text representation of arguments for embedding
 		StringBuilder args = new StringBuilder();
 		String delimiter = "";
 		for (int i = 0; i < argClasses.size(); i++) {
 			args.append(delimiter + argClasses.get(i));
-			delimiter = " + \",\" + "; // 引数データを、 + "," + で区切る 
+			delimiter = " + \",\" + "; // to separate each argument
 			args.append(delimiter + argObjects.get(i));
 		}
 		if (args.toString().isEmpty()) {
 			args.append("\"\"");
 		}
 
-		// 埋め込み処理
+		// Do embedding
 		StringBuilder embedded = new StringBuilder();
 		boolean isConstructor = (m instanceof CtConstructor);
 		if (!isConstructor) {
@@ -106,7 +106,7 @@ public class OnlineTraceGenerator implements ITraceGenerator {
 	public String generateInsertAfterStatements(CtClass cls, CtBehavior m,
 			String thisClass, String thisObject, String returnedClass, String returnedObject,
 			String threadId, String timeStamp, boolean isCallerSideInstrumentation) {
-		// 埋め込み処理
+		// Do embedding
 		String shortSignature = "\"" + m.getLongName().replace('$', ',') + "\"";
 		StringBuilder embedded = new StringBuilder();
 		boolean isConstructor = (m instanceof CtConstructor);
@@ -127,7 +127,7 @@ public class OnlineTraceGenerator implements ITraceGenerator {
 	
 	@Override
 	public String generateInsertStatementsForCall(CtBehavior m, String lineNum, String threadId) {
-		// 埋め込み処理
+		// Do embedding
 		String signature = "\"" + m.getLongName().replace('$', '.') + "\"";
 		StringBuilder embedded = new StringBuilder();
 		embedded.append(Tracer.TRACER + "OnlineTraceOutput.onlineTracePreCallMethod(");
@@ -139,7 +139,7 @@ public class OnlineTraceGenerator implements ITraceGenerator {
 	public String generateInsertStatementsForBlockEntry(
 			CtMethod m, String blockId, String incomings,
 			String threadId, String lineNum, String timeStamp) {
-		// 埋め込み処理
+		// Do embedding
 		StringBuilder embedded = new StringBuilder();
 		embedded.append(Tracer.TRACER + "OnlineTraceOutput.onlineTraceBlockEntry(");
 		embedded.append(blockId + ", " + incomings + ", ");
@@ -149,7 +149,7 @@ public class OnlineTraceGenerator implements ITraceGenerator {
 	
 	@Override
 	public String generateInsertBeforeStatementsForClassDefinition(String className, String classPath, String loaderPath) {
-		// 埋め込み処理
+		// Do embedding
 		StringBuilder embedded = new StringBuilder();
 		embedded.append(Tracer.TRACER + "OnlineTraceOutput.onlineTraceClassDefinition(");
 		embedded.append(className + ", " + classPath + ", " + loaderPath + ");");
@@ -157,14 +157,19 @@ public class OnlineTraceGenerator implements ITraceGenerator {
 	}
 	
 	public static void arraySetOutput(String arrayType, String arrayId, int index, String valueType, String valueId, long threadId, long timeStamp) {
-		// 埋め込み処理
+		// Do embedding
 		OnlineTraceOutput.onlineTraceArraySet(arrayType, arrayId, index,
 				valueType, valueId, String.valueOf(threadId), timeStamp);
 	}
 		
 	public static void arrayGetOutput(String arrayType, String arrayId, int index, String valueType, String valueId, long threadId, long timeStamp) {
-		// 埋め込み処理
+		// Do embedding
 		OnlineTraceOutput.onlineTraceArrayGet(arrayType, arrayId, index,
 				valueType, valueId, String.valueOf(threadId), timeStamp);
+	}
+
+	@Override
+	public String getArrayAdvisorClassName() {
+		return "OnlineArrayAdvisor";
 	}	
 }

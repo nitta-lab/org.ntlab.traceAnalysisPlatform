@@ -151,7 +151,7 @@ public class TracerLaunchConfigurationDelegate extends org.eclipse.jdt.launching
 	private String getPath(String location) {
 		System.out.println(location);
 		if (location.indexOf('/') >= 0) {
-			return location.substring(location.indexOf('/')).split("!/")[0];		
+			return location.substring(location.indexOf('/') + 1).split("!/")[0];		
 		} else {
 			return location.split("!/")[0];
 		}

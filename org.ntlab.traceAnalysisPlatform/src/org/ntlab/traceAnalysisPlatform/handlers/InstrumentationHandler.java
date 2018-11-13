@@ -1,6 +1,7 @@
 package org.ntlab.traceAnalysisPlatform.handlers;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 
 import org.eclipse.core.commands.AbstractHandler;
@@ -11,12 +12,24 @@ import org.eclipse.core.internal.resources.Workspace;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.core.runtime.jobs.ProgressProvider;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jface.dialogs.ProgressMonitorDialog;
+import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.window.Window;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.IWorkbench;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.ntlab.traceAnalysisPlatform.Activator;
 import org.ntlab.traceAnalysisPlatform.tracer.ITraceGenerator;
@@ -84,9 +97,23 @@ public abstract class InstrumentationHandler extends AbstractHandler {
 						cp.appendClassPath(classPath);
 					}
 					
-					// Do instrumentation.
+					final String CLASS_PATH = classPath;					
 					Tracer.initialize(new OutputStatementsGenerator(getGenerator()), cp);	// Specify the output format by the instance of ITraceGenerator.
-					Tracer.packageInstrumentation("", classPath + "/");
+					Job job = new Job("Instrumentation") {
+						@Override
+						protected IStatus run(IProgressMonitor monitor) {							
+							monitor.beginTask("Running instrumentation...", IProgressMonitor.UNKNOWN);
+							Tracer.packageInstrumentation("", CLASS_PATH + "/");
+							monitor.done();
+							return Status.OK_STATUS;
+						}
+					};
+					job.setUser(true);
+					job.schedule();
+					
+					// Do instrumentation.
+//					Tracer.initialize(new OutputStatementsGenerator(getGenerator()), cp);	// Specify the output format by the instance of ITraceGenerator.
+//					Tracer.packageInstrumentation("", classPath + "/");
 				} catch (JavaModelException | NotFoundException e) {
 					e.printStackTrace();
 				}

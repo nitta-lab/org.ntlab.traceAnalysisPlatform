@@ -7,6 +7,8 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.util.List;
 
+import org.eclipse.core.runtime.IProgressMonitor;
+
 import javassist.CannotCompileException;
 import javassist.ClassPool;
 import javassist.CodeConverter;
@@ -44,6 +46,7 @@ public class Tracer {
 	private static OutputStatementsGenerator outputStatementsGenerator = null;
 	private static ClassPool cp = null;
 	private static CodeConverter conv = null;
+	private static IProgressMonitor monitor = null;
 
 	public static void main(String[] args) {
 		initialize(new OutputStatementsGenerator(new JSONTraceGenerator()));		// Specify the output format by the instance of ITraceGenerator
@@ -73,6 +76,10 @@ public class Tracer {
 	 * @param cp						a ClassPool object
 	 */
 	public static void initialize(OutputStatementsGenerator outputStatementsGenerator, ClassPool cp) {
+		initialize(outputStatementsGenerator, cp, null);
+	}
+	
+	public static void initialize(OutputStatementsGenerator outputStatementsGenerator, ClassPool cp, IProgressMonitor monitor) {
 		Tracer.cp = cp;
 		Tracer.outputStatementsGenerator = outputStatementsGenerator;
 		Tracer.conv = new CodeConverter();
@@ -84,6 +91,7 @@ public class Tracer {
 				e1.printStackTrace();
 			}
 		}
+		Tracer.monitor = monitor;
 	}
 
 	/**
@@ -102,6 +110,7 @@ public class Tracer {
 			} else if (file.isDirectory()) {
 				packageInstrumentation(packageName + file.getName() + "/", classPath);
 			}
+			if (monitor != null && monitor.isCanceled()) return;
 		}
 	}
 

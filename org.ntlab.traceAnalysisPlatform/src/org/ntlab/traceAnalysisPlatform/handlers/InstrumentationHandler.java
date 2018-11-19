@@ -97,11 +97,13 @@ public abstract class InstrumentationHandler extends AbstractHandler {
 						cp.appendClassPath(classPath);
 					}
 					
-					final String CLASS_PATH = classPath;					
-					Tracer.initialize(new OutputStatementsGenerator(getGenerator()), cp);	// Specify the output format by the instance of ITraceGenerator.
+					// Do instrumentation.
+					final String CLASS_PATH = classPath;
+					final ClassPool CP = cp;
 					Job job = new Job("Instrumentation") {
 						@Override
-						protected IStatus run(IProgressMonitor monitor) {							
+						protected IStatus run(IProgressMonitor monitor) {
+							Tracer.initialize(new OutputStatementsGenerator(getGenerator()), CP, monitor);	// Specify the output format by the instance of ITraceGenerator.							
 							monitor.beginTask("Running instrumentation...", IProgressMonitor.UNKNOWN);
 							Tracer.packageInstrumentation("", CLASS_PATH + "/");
 							monitor.done();
@@ -109,11 +111,7 @@ public abstract class InstrumentationHandler extends AbstractHandler {
 						}
 					};
 					job.setUser(true);
-					job.schedule();
-					
-					// Do instrumentation.
-//					Tracer.initialize(new OutputStatementsGenerator(getGenerator()), cp);	// Specify the output format by the instance of ITraceGenerator.
-//					Tracer.packageInstrumentation("", classPath + "/");
+					job.schedule();					
 				} catch (JavaModelException | NotFoundException e) {
 					e.printStackTrace();
 				}

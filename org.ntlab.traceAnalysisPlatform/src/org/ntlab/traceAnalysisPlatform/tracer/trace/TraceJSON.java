@@ -22,7 +22,7 @@ public class TraceJSON extends Trace {
 //	private static TraceJSON theTrace = null;
 	private HashMap<String, ClassInfo> classes = new HashMap<>();
 	private HashMap<String, Stack<String>> stacks = new HashMap<String, Stack<String>>();
-	private ThreadInstance thread = null;
+//	private ThreadInstance thread = null;
 	
 	private TraceJSON() {
 		
@@ -668,188 +668,192 @@ public class TraceJSON extends Trace {
 		return getInstance().threads;
 	}
 	
-	public static synchronized void onlineTraceClassDefinition(String className, String classPath, String loaderPath) {
-		// classPathとloaderPathについては先頭の / を取り除いて記録する (readJSON内での処理と同等になる)
-		initializeClass(className, classPath.substring(1), loaderPath.substring(1));
+	public static HashMap<String, Stack<String>> getStacks() {
+		return getInstance().stacks;
 	}
 	
-	public static synchronized void onlineTracePreCallMethod(String signature, String threadId, String lineNum) {
-		getInstance().thread = getInstance().threads.get(threadId);
-		getInstance().thread.preCallMethod(signature, Integer.parseInt(lineNum));
-	}
-	
-	public static synchronized void onlineTraceMethodEntry(String signature, String thisClassName, String thisObjectId, 
-			String threadId, long timeStamp, String argList) {
-		boolean isConstractor = false;
-		boolean isStatic = false;
-		if (signature.contains("static ")) {
-			isStatic = true;
-		}
-		getInstance().thread = getInstance().threads.get(threadId);		
-		Stack<String> stack;
-		if (getInstance().thread  == null) {
-			getInstance().thread = new ThreadInstance(threadId);
-			getInstance().threads.put(threadId, getInstance().thread);
-			stack = new Stack<String>();
-			getInstance().stacks.put(threadId, stack);
-		} else {
-			stack = getInstance().stacks.get(threadId);
-		}
-		stack.push(signature);
-		// メソッド呼び出しの設定
-		getInstance().thread.callMethod(signature, null, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
-		// 引数の設定
-		ArrayList<ObjectReference> arguments = new ArrayList<>();
-		String[] args = argList.split(",");
-		for (int i = 0; i < args.length - 1; i += 2) {
-			arguments.add(new ObjectReference(args[i+1], args[i]));
-		}
-		getInstance().thread.setArgments(arguments);
-	}
-	
-	public static synchronized void onlineTraceConstructorEntry(String signature, String thisClassName, String thisObjectId, 
-			String threadId, long timeStamp, String argList) {
-		boolean isConstractor = true;
-		boolean isStatic = false;
-		getInstance().thread = getInstance().threads.get(threadId);
-		Stack<String> stack;
-		if (getInstance().thread == null) {
-			getInstance().thread = new ThreadInstance(threadId);
-			getInstance().threads.put(threadId, getInstance().thread);
-			stack = new Stack<String>();
-			getInstance().stacks.put(threadId, stack);
-		} else {
-			stack = getInstance().stacks.get(threadId);
-		}
-		stack.push(signature);
-		// メソッド呼び出しの設定
-		getInstance().thread.callMethod(signature, null, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
-		// 引数の設定
-		ArrayList<ObjectReference> arguments = new ArrayList<>();
-		String[] args = argList.split(",");
-		for (int i = 0; i < args.length - 1; i += 2) {
-			arguments.add(new ObjectReference(args[i+1], args[i]));
-		}
-		getInstance().thread.setArgments(arguments);
-	}
-	
-	public static synchronized void onlineTraceMethodExit(String shortSignature, String thisClassName, String thisObjectId, 
-			String returnClassName, String returnObjectId, String threadId, long timeStamp) {
-		Stack<String> stack = getInstance().stacks.get(threadId);
-		if (!stack.isEmpty()) {
-			String line2 = stack.peek();
-			if (line2.endsWith(shortSignature)) {
-				stack.pop();
-			} else {
-				do {
-					stack.pop();
-					getInstance().thread.terminateMethod();
-					if (stack.isEmpty()) break;
-					line2 = stack.peek();
-				} while (!stack.isEmpty() && !line2.endsWith(shortSignature));
-				if (!stack.isEmpty()) stack.pop();
-			}
-			getInstance().thread = getInstance().threads.get(threadId);
-			ObjectReference returnVal = new ObjectReference(returnObjectId, returnClassName);					
-			boolean isCollectionType = false;
-			if(thisClassName.contains("java.util.List")
-					|| thisClassName.contains("java.util.Vector")
-					|| thisClassName.contains("java.util.Iterator")
-					|| thisClassName.contains("java.util.ListIterator")
-					|| thisClassName.contains("java.util.ArrayList")
-					|| thisClassName.contains("java.util.Stack")
-					|| thisClassName.contains("java.util.Hash")
-					|| thisClassName.contains("java.util.Map")
-					|| thisClassName.contains("java.util.Set")
-					|| thisClassName.contains("java.util.Linked")
-					|| thisClassName.contains("java.lang.Thread")) {
-				isCollectionType = true;
-			}
-			// メソッドからの復帰の設定
-			getInstance().thread.returnMethod(returnVal, thisObjectId, isCollectionType, timeStamp);
-		}
-	}
-	
-	public static synchronized void onlineTraceConstructorExit(String shortSignature, String returnClassName, String returnObjectId, 
-			String threadId, long timeStamp) {
-		String thisClassName = returnClassName;
-		String thisObjectId = returnObjectId;
-		Stack<String> stack = getInstance().stacks.get(threadId);
-		if (!stack.isEmpty()) {
-			String line2 = stack.peek();
-			if (line2.endsWith(shortSignature)) {
-				stack.pop();
-			} else {
-				do {
-					stack.pop();
-					getInstance().thread.terminateMethod();
-					if (stack.isEmpty()) break; // この一文を仮に追加(MethodExitの方も同様)
-					line2 = stack.peek();
-				} while (!stack.isEmpty() && !line2.endsWith(shortSignature));
-				if (!stack.isEmpty()) stack.pop();
-			}
-			getInstance().thread = getInstance().threads.get(threadId);
-			ObjectReference returnVal = new ObjectReference(returnObjectId, returnClassName);					
-			boolean isCollectionType = false;
-			if(thisClassName.contains("java.util.List")
-					|| thisClassName.contains("java.util.Vector")
-					|| thisClassName.contains("java.util.Iterator")
-					|| thisClassName.contains("java.util.ListIterator")
-					|| thisClassName.contains("java.util.ArrayList")
-					|| thisClassName.contains("java.util.Stack")
-					|| thisClassName.contains("java.util.Hash")
-					|| thisClassName.contains("java.util.Map")
-					|| thisClassName.contains("java.util.Set")
-					|| thisClassName.contains("java.util.Linked")
-					|| thisClassName.contains("java.lang.Thread")) {
-				isCollectionType = true;
-			}
-			// メソッドからの復帰の設定
-			getInstance().thread.returnMethod(returnVal, thisObjectId, isCollectionType, timeStamp);
-		}
-	}
-	
-	public static synchronized void onlineTraceFieldGet(String fieldName, String thisClassName, String thisObjectId, 
-			String containerClassName, String containerObjectId, String valueClassName, String valueObjectId,
-			String threadId, String lineNum, long timeStamp) {
-		getInstance().thread = getInstance().threads.get(threadId);
-		// フィールドアクセスの設定
-		if (getInstance().thread != null) getInstance().thread.fieldAccess(fieldName, valueClassName, valueObjectId, containerClassName, containerObjectId, thisClassName, thisObjectId, Integer.parseInt(lineNum), timeStamp);
-	}
-	
-	public static synchronized void onlineTraceFieldSet(String fieldName, String containerClassName, String containerObjectId, 
-			String valueClassName, String valueObjectId, String threadId, String lineNum, long timeStamp) {
-		getInstance().thread = getInstance().threads.get(threadId);
-		// フィールド更新の設定
-		if (getInstance().thread != null) getInstance().thread.fieldUpdate(fieldName, valueClassName, valueObjectId, containerClassName, containerObjectId, Integer.parseInt(lineNum), timeStamp);
-	}
-	
-	public static synchronized void onlineTraceArrayCreate(String arrayClassName, String arrayObjectId, String dimension, 
-			String threadId, String lineNum, long timeStamp) {
-		getInstance().thread = getInstance().threads.get(threadId);
-		if (getInstance().thread != null) getInstance().thread.arrayCreate(arrayClassName, arrayObjectId, Integer.parseInt(dimension), Integer.parseInt(lineNum), timeStamp);
-	}
-			
-	public static synchronized void onlineTraceArraySet(String arrayClassName, String arrayObjectId, int index, 
-			String valueClassName, String valueObjectId, String threadId, long timeStamp) {
-		// 配列要素への代入
-		getInstance().thread = getInstance().threads.get(threadId);
-		if (getInstance().thread != null) getInstance().thread.arraySet(arrayClassName, arrayObjectId, index, valueClassName, valueObjectId, 0, timeStamp);
-	}
-	
-	public static synchronized void onlineTraceArrayGet(String arrayClassName, String arrayObjectId, int index, 
-			String valueClassName, String valueObjectId, String threadId, long timeStamp) {
-		// 配列要素の参照
-		getInstance().thread = getInstance().threads.get(threadId);
-		if (getInstance().thread != null) getInstance().thread.arrayGet(arrayClassName, arrayObjectId, index, valueClassName, valueObjectId, 0, timeStamp);
-	}
-
-	public static synchronized void onlineTraceBlockEntry(String blockId, String incomings, 
-			String threadId, String lineNum, long timeStamp) {
-		// ブロックの開始
-		getInstance().thread = getInstance().threads.get(threadId);
-		if (getInstance().thread != null) getInstance().thread.blockEnter(Integer.parseInt(blockId), Integer.parseInt(incomings), Integer.parseInt(lineNum), timeStamp);
-	}
+//	public static synchronized void onlineTraceClassDefinition(String className, String classPath, String loaderPath) {
+//		// classPathとloaderPathについては先頭の / を取り除いて記録する (readJSON内での処理と同等になる)
+//		initializeClass(className, classPath.substring(1), loaderPath.substring(1));
+//	}
+//	
+//	public static synchronized void onlineTracePreCallMethod(String signature, String threadId, String lineNum) {
+//		getInstance().thread = getInstance().threads.get(threadId);
+//		getInstance().thread.preCallMethod(signature, Integer.parseInt(lineNum));
+//	}
+//	
+//	public static synchronized void onlineTraceMethodEntry(String signature, String thisClassName, String thisObjectId, 
+//			String threadId, long timeStamp, String argList) {
+//		boolean isConstractor = false;
+//		boolean isStatic = false;
+//		if (signature.contains("static ")) {
+//			isStatic = true;
+//		}
+//		getInstance().thread = getInstance().threads.get(threadId);		
+//		Stack<String> stack;
+//		if (getInstance().thread  == null) {
+//			getInstance().thread = new ThreadInstance(threadId);
+//			getInstance().threads.put(threadId, getInstance().thread);
+//			stack = new Stack<String>();
+//			getInstance().stacks.put(threadId, stack);
+//		} else {
+//			stack = getInstance().stacks.get(threadId);
+//		}
+//		stack.push(signature);
+//		// メソッド呼び出しの設定
+//		getInstance().thread.callMethod(signature, null, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
+//		// 引数の設定
+//		ArrayList<ObjectReference> arguments = new ArrayList<>();
+//		String[] args = argList.split(",");
+//		for (int i = 0; i < args.length - 1; i += 2) {
+//			arguments.add(new ObjectReference(args[i+1], args[i]));
+//		}
+//		getInstance().thread.setArgments(arguments);
+//	}
+//	
+//	public static synchronized void onlineTraceConstructorEntry(String signature, String thisClassName, String thisObjectId, 
+//			String threadId, long timeStamp, String argList) {
+//		boolean isConstractor = true;
+//		boolean isStatic = false;
+//		getInstance().thread = getInstance().threads.get(threadId);
+//		Stack<String> stack;
+//		if (getInstance().thread == null) {
+//			getInstance().thread = new ThreadInstance(threadId);
+//			getInstance().threads.put(threadId, getInstance().thread);
+//			stack = new Stack<String>();
+//			getInstance().stacks.put(threadId, stack);
+//		} else {
+//			stack = getInstance().stacks.get(threadId);
+//		}
+//		stack.push(signature);
+//		// メソッド呼び出しの設定
+//		getInstance().thread.callMethod(signature, null, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
+//		// 引数の設定
+//		ArrayList<ObjectReference> arguments = new ArrayList<>();
+//		String[] args = argList.split(",");
+//		for (int i = 0; i < args.length - 1; i += 2) {
+//			arguments.add(new ObjectReference(args[i+1], args[i]));
+//		}
+//		getInstance().thread.setArgments(arguments);
+//	}
+//	
+//	public static synchronized void onlineTraceMethodExit(String shortSignature, String thisClassName, String thisObjectId, 
+//			String returnClassName, String returnObjectId, String threadId, long timeStamp) {
+//		Stack<String> stack = getInstance().stacks.get(threadId);
+//		if (!stack.isEmpty()) {
+//			String line2 = stack.peek();
+//			if (line2.endsWith(shortSignature)) {
+//				stack.pop();
+//			} else {
+//				do {
+//					stack.pop();
+//					getInstance().thread.terminateMethod();
+//					if (stack.isEmpty()) break;
+//					line2 = stack.peek();
+//				} while (!stack.isEmpty() && !line2.endsWith(shortSignature));
+//				if (!stack.isEmpty()) stack.pop();
+//			}
+//			getInstance().thread = getInstance().threads.get(threadId);
+//			ObjectReference returnVal = new ObjectReference(returnObjectId, returnClassName);					
+//			boolean isCollectionType = false;
+//			if(thisClassName.contains("java.util.List")
+//					|| thisClassName.contains("java.util.Vector")
+//					|| thisClassName.contains("java.util.Iterator")
+//					|| thisClassName.contains("java.util.ListIterator")
+//					|| thisClassName.contains("java.util.ArrayList")
+//					|| thisClassName.contains("java.util.Stack")
+//					|| thisClassName.contains("java.util.Hash")
+//					|| thisClassName.contains("java.util.Map")
+//					|| thisClassName.contains("java.util.Set")
+//					|| thisClassName.contains("java.util.Linked")
+//					|| thisClassName.contains("java.lang.Thread")) {
+//				isCollectionType = true;
+//			}
+//			// メソッドからの復帰の設定
+//			getInstance().thread.returnMethod(returnVal, thisObjectId, isCollectionType, timeStamp);
+//		}
+//	}
+//	
+//	public static synchronized void onlineTraceConstructorExit(String shortSignature, String returnClassName, String returnObjectId, 
+//			String threadId, long timeStamp) {
+//		String thisClassName = returnClassName;
+//		String thisObjectId = returnObjectId;
+//		Stack<String> stack = getInstance().stacks.get(threadId);
+//		if (!stack.isEmpty()) {
+//			String line2 = stack.peek();
+//			if (line2.endsWith(shortSignature)) {
+//				stack.pop();
+//			} else {
+//				do {
+//					stack.pop();
+//					getInstance().thread.terminateMethod();
+//					if (stack.isEmpty()) break; // この一文を仮に追加(MethodExitの方も同様)
+//					line2 = stack.peek();
+//				} while (!stack.isEmpty() && !line2.endsWith(shortSignature));
+//				if (!stack.isEmpty()) stack.pop();
+//			}
+//			getInstance().thread = getInstance().threads.get(threadId);
+//			ObjectReference returnVal = new ObjectReference(returnObjectId, returnClassName);					
+//			boolean isCollectionType = false;
+//			if(thisClassName.contains("java.util.List")
+//					|| thisClassName.contains("java.util.Vector")
+//					|| thisClassName.contains("java.util.Iterator")
+//					|| thisClassName.contains("java.util.ListIterator")
+//					|| thisClassName.contains("java.util.ArrayList")
+//					|| thisClassName.contains("java.util.Stack")
+//					|| thisClassName.contains("java.util.Hash")
+//					|| thisClassName.contains("java.util.Map")
+//					|| thisClassName.contains("java.util.Set")
+//					|| thisClassName.contains("java.util.Linked")
+//					|| thisClassName.contains("java.lang.Thread")) {
+//				isCollectionType = true;
+//			}
+//			// メソッドからの復帰の設定
+//			getInstance().thread.returnMethod(returnVal, thisObjectId, isCollectionType, timeStamp);
+//		}
+//	}
+//	
+//	public static synchronized void onlineTraceFieldGet(String fieldName, String thisClassName, String thisObjectId, 
+//			String containerClassName, String containerObjectId, String valueClassName, String valueObjectId,
+//			String threadId, String lineNum, long timeStamp) {
+//		getInstance().thread = getInstance().threads.get(threadId);
+//		// フィールドアクセスの設定
+//		if (getInstance().thread != null) getInstance().thread.fieldAccess(fieldName, valueClassName, valueObjectId, containerClassName, containerObjectId, thisClassName, thisObjectId, Integer.parseInt(lineNum), timeStamp);
+//	}
+//	
+//	public static synchronized void onlineTraceFieldSet(String fieldName, String containerClassName, String containerObjectId, 
+//			String valueClassName, String valueObjectId, String threadId, String lineNum, long timeStamp) {
+//		getInstance().thread = getInstance().threads.get(threadId);
+//		// フィールド更新の設定
+//		if (getInstance().thread != null) getInstance().thread.fieldUpdate(fieldName, valueClassName, valueObjectId, containerClassName, containerObjectId, Integer.parseInt(lineNum), timeStamp);
+//	}
+//	
+//	public static synchronized void onlineTraceArrayCreate(String arrayClassName, String arrayObjectId, String dimension, 
+//			String threadId, String lineNum, long timeStamp) {
+//		getInstance().thread = getInstance().threads.get(threadId);
+//		if (getInstance().thread != null) getInstance().thread.arrayCreate(arrayClassName, arrayObjectId, Integer.parseInt(dimension), Integer.parseInt(lineNum), timeStamp);
+//	}
+//			
+//	public static synchronized void onlineTraceArraySet(String arrayClassName, String arrayObjectId, int index, 
+//			String valueClassName, String valueObjectId, String threadId, long timeStamp) {
+//		// 配列要素への代入
+//		getInstance().thread = getInstance().threads.get(threadId);
+//		if (getInstance().thread != null) getInstance().thread.arraySet(arrayClassName, arrayObjectId, index, valueClassName, valueObjectId, 0, timeStamp);
+//	}
+//	
+//	public static synchronized void onlineTraceArrayGet(String arrayClassName, String arrayObjectId, int index, 
+//			String valueClassName, String valueObjectId, String threadId, long timeStamp) {
+//		// 配列要素の参照
+//		getInstance().thread = getInstance().threads.get(threadId);
+//		if (getInstance().thread != null) getInstance().thread.arrayGet(arrayClassName, arrayObjectId, index, valueClassName, valueObjectId, 0, timeStamp);
+//	}
+//
+//	public static synchronized void onlineTraceBlockEntry(String blockId, String incomings, 
+//			String threadId, String lineNum, long timeStamp) {
+//		// ブロックの開始
+//		getInstance().thread = getInstance().threads.get(threadId);
+//		if (getInstance().thread != null) getInstance().thread.blockEnter(Integer.parseInt(blockId), Integer.parseInt(incomings), Integer.parseInt(lineNum), timeStamp);
+//	}
 
 	public static ThreadInstance getThreadInstance(String threadId) {
 		return getInstance().threads.get(threadId);
@@ -999,5 +1003,5 @@ public class TraceJSON extends Trace {
 			return before;			
 		}
 		return null;
-	}	
+	}
 }

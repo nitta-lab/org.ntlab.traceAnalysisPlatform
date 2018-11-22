@@ -10,16 +10,16 @@ import org.ntlab.traceAnalysisPlatform.tracer.trace.TraceJSON;
 public class OnlineTraceOutput {
 	private static ThreadInstance thread = null;
 
-	public static void onlineTraceClassDefinition(String className, String classPath, String loaderPath) {
+	public static synchronized void onlineTraceClassDefinition(String className, String classPath, String loaderPath) {
 		// classPathÇ∆loaderPathÇ…Ç¬Ç¢ÇƒÇÕêÊì™ÇÃ / ÇéÊÇËèúÇ¢ÇƒãLò^Ç∑ÇÈ
 		TraceJSON.initializeClass(className, classPath.substring(1), loaderPath.substring(1));
 	}
 
-	public static void onlineTracePreCallMethod(String signature, String threadId, String lineNum) {
+	public static synchronized void onlineTracePreCallMethod(String signature, String threadId, String lineNum) {
 		TraceJSON.getThreadInstance(threadId).preCallMethod(signature, Integer.parseInt(lineNum));
 	}
 
-	public static void onlineTraceMethodEntry(String signature, String thisClassName, String thisObjectId,
+	public static synchronized void onlineTraceMethodEntry(String signature, String thisClassName, String thisObjectId,
 			String threadId, long timeStamp, String argList) {
 		boolean isConstractor = false;
 		boolean isStatic = false;
@@ -48,7 +48,7 @@ public class OnlineTraceOutput {
 		thread.setArgments(arguments);
 	}
 
-	public static void onlineTraceConstructorEntry(String signature, String thisClassName, String thisObjectId,
+	public static synchronized void onlineTraceConstructorEntry(String signature, String thisClassName, String thisObjectId,
 			String threadId, long timeStamp, String argList) {
 		boolean isConstractor = true;
 		boolean isStatic = false;
@@ -74,7 +74,7 @@ public class OnlineTraceOutput {
 		thread.setArgments(arguments);
 	}
 
-	public static void onlineTraceMethodExit(String shortSignature, String thisClassName, String thisObjectId,
+	public static synchronized void onlineTraceMethodExit(String shortSignature, String thisClassName, String thisObjectId,
 			String returnClassName, String returnObjectId, String threadId, long timeStamp) {
 		Stack<String> stack = TraceJSON.getStacks().get(threadId);
 		if (!stack.isEmpty()) {
@@ -106,7 +106,7 @@ public class OnlineTraceOutput {
 		}
 	}
 
-	public static void onlineTraceConstructorExit(String shortSignature, String returnClassName, String returnObjectId,
+	public static synchronized void onlineTraceConstructorExit(String shortSignature, String returnClassName, String returnObjectId,
 			String threadId, long timeStamp) {
 		String thisClassName = returnClassName;
 		String thisObjectId = returnObjectId;
@@ -140,7 +140,7 @@ public class OnlineTraceOutput {
 		}
 	}
 
-	public static void onlineTraceFieldGet(String fieldName, String thisClassName, String thisObjectId,
+	public static synchronized void onlineTraceFieldGet(String fieldName, String thisClassName, String thisObjectId,
 			String containerClassName, String containerObjectId, String valueClassName, String valueObjectId,
 			String threadId, String lineNum, long timeStamp) {
 		thread = TraceJSON.getThreadInstance(threadId);
@@ -150,7 +150,7 @@ public class OnlineTraceOutput {
 		}
 	}
 
-	public static void onlineTraceFieldSet(String fieldName, String containerClassName, String containerObjectId,
+	public static synchronized void onlineTraceFieldSet(String fieldName, String containerClassName, String containerObjectId,
 			String valueClassName, String valueObjectId, String threadId, String lineNum, long timeStamp) {
 		thread = TraceJSON.getThreadInstance(threadId);
 		if (thread != null) {
@@ -159,7 +159,7 @@ public class OnlineTraceOutput {
 		}
 	}
 
-	public static void onlineTraceArrayCreate(String arrayClassName, String arrayObjectId, String dimension,
+	public static synchronized void onlineTraceArrayCreate(String arrayClassName, String arrayObjectId, String dimension,
 			String threadId, String lineNum, long timeStamp) {
 		thread = TraceJSON.getThreadInstance(threadId);
 		if (thread != null) {
@@ -168,7 +168,7 @@ public class OnlineTraceOutput {
 		}
 	}
 
-	public static void onlineTraceArraySet(String arrayClassName, String arrayObjectId, int index,
+	public static synchronized void onlineTraceArraySet(String arrayClassName, String arrayObjectId, int index,
 			String valueClassName, String valueObjectId, String threadId, long timeStamp) {
 		thread = TraceJSON.getThreadInstance(threadId);
 		if (thread != null) {
@@ -176,7 +176,7 @@ public class OnlineTraceOutput {
 		}
 	}
 
-	public static void onlineTraceArrayGet(String arrayClassName, String arrayObjectId, int index,
+	public static synchronized void onlineTraceArrayGet(String arrayClassName, String arrayObjectId, int index,
 			String valueClassName, String valueObjectId, String threadId, long timeStamp) {
 		thread = TraceJSON.getThreadInstance(threadId);
 		if (thread != null) {
@@ -184,7 +184,7 @@ public class OnlineTraceOutput {
 		}
 	}
 
-	public static void onlineTraceBlockEntry(String blockId, String incomings, String threadId, String lineNum,
+	public static synchronized void onlineTraceBlockEntry(String blockId, String incomings, String threadId, String lineNum,
 			long timeStamp) {
 		thread = TraceJSON.getThreadInstance(threadId);
 		if (thread != null) {

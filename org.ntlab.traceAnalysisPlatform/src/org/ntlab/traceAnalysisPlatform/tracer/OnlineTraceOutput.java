@@ -85,12 +85,10 @@ public class OnlineTraceOutput {
 				do {
 					stack.pop();
 					thread.terminateMethod();
-					if (stack.isEmpty())
-						break;
+					if (stack.isEmpty()) break;
 					line2 = stack.peek();
 				} while (!stack.isEmpty() && !line2.endsWith(shortSignature));
-				if (!stack.isEmpty())
-					stack.pop();
+				if (!stack.isEmpty()) stack.pop();
 			}
 			thread = TraceJSON.getThreadInstance(threadId);
 			ObjectReference returnVal = new ObjectReference(returnObjectId, returnClassName);
@@ -121,12 +119,10 @@ public class OnlineTraceOutput {
 				do {
 					stack.pop();
 					thread.terminateMethod();
-					if (stack.isEmpty())
-						break; // ‚±‚Ìˆê•¶‚ð‰¼‚É’Ç‰Á(MethodExit‚Ì•û‚à“¯—l)
+					if (stack.isEmpty()) break; // ‚±‚Ìˆê•¶‚ð‰¼‚É’Ç‰Á(MethodExit‚Ì•û‚à“¯—l)
 					line2 = stack.peek();
 				} while (!stack.isEmpty() && !line2.endsWith(shortSignature));
-				if (!stack.isEmpty())
-					stack.pop();
+				if (!stack.isEmpty()) stack.pop();
 			}
 			thread = TraceJSON.getThreadInstance(threadId);
 			ObjectReference returnVal = new ObjectReference(returnObjectId, returnClassName);

@@ -1,9 +1,6 @@
 package org.ntlab.traceAnalysisPlatform.tracer;
 
-import java.util.ArrayList;
 import java.util.List;
-
-import org.ntlab.traceAnalysisPlatform.tracer.trace.TraceJSON;
 
 import javassist.CtBehavior;
 import javassist.CtClass;
@@ -12,7 +9,6 @@ import javassist.CtMethod;
 
 /**
  * Online trace specific part of OutputStatementsGenerator (for offline analysis)
- * @author Isitani
  *
  */
 public class OnlineTraceGenerator implements ITraceGenerator {

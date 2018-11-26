@@ -25,8 +25,6 @@ import org.eclipse.jdt.internal.debug.ui.launcher.MainMethodSearchEngine;
 import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.operation.IRunnableContext;
-import org.eclipse.jface.viewers.ISelection;
-import org.eclipse.ui.IEditorPart;
 
 public class TracerLaunchShortcut extends org.eclipse.jdt.debug.ui.launchConfigurations.JavaLaunchShortcut {
 	

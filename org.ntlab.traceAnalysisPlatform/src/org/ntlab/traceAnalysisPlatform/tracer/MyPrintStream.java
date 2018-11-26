@@ -1,7 +1,6 @@
 package org.ntlab.traceAnalysisPlatform.tracer;
 
 import java.io.PrintStream;
-import java.util.ArrayList;
 import java.util.LinkedList;
 
 /**

@@ -9,7 +9,6 @@ public class InstrumentationHandlerForOnlineAnalysis extends InstrumentationHand
 
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
-		System.out.println("InstrumentationHandlerForOnlineAnalysis#execute(ExecutionEvent)");
 		return super.execute(event);
 	}
 	

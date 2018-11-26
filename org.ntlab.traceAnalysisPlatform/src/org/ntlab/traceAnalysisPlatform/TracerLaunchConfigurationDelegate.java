@@ -8,7 +8,6 @@ import java.util.Map;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
-import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.debug.core.ILaunch;
@@ -89,7 +88,6 @@ public class TracerLaunchConfigurationDelegate extends org.eclipse.jdt.launching
 
 				for (int i = 0; i < classpath.length; i++) {
 					classpath[i] = classpath[i].replace("/", File.separator);
-					System.out.println(String.format("classpath[%d] = %s", i, classpath[i]));
 				}
 			} catch (IOException e) {
 				classpath = configClasspath;

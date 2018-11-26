@@ -1,10 +1,7 @@
 package org.ntlab.traceAnalysisPlatform.tracer;
 
-import java.util.ArrayList;
-
 /**
  * 配列へのアクセス情報を出力するためのクラス (オンライン解析用)
- * @author 石谷涼
  *
  */
 public class OnlineArrayAdvisor {

@@ -4,16 +4,10 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Stack;
-
-import org.ntlab.traceAnalysisPlatform.tracer.OnlineTraceOutput;
 
 public class TraceJSON extends Trace {
 	private HashMap<String, ClassInfo> classes = new HashMap<>();

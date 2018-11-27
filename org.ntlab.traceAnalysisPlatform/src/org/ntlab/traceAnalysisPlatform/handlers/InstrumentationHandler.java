@@ -36,6 +36,7 @@ import javassist.NotFoundException;
  * @author Nitta
  *
  */
+@SuppressWarnings("restriction")
 public abstract class InstrumentationHandler extends AbstractHandler {
 
 	@Override

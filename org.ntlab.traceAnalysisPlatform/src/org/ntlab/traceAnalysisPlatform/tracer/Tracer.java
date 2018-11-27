@@ -183,7 +183,7 @@ public class Tracer {
 		if (m instanceof CtMethod && !m.isEmpty()) {
 			ControlFlow cf = new ControlFlow((CtMethod)m);
 			blocks = cf.basicBlocks();
-			List list = m.getMethodInfo().getCodeAttribute().getAttributes();
+			List<?> list = m.getMethodInfo().getCodeAttribute().getAttributes();
 			LineNumberAttribute attr = null;
 			for (int i = 0; i < list.size(); i++) {
 				if (list.get(i) instanceof LineNumberAttribute){

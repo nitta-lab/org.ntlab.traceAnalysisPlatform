@@ -6,7 +6,6 @@ import org.eclipse.debug.internal.ui.SWTFactory;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Group;
 
 public class TracerTab extends org.eclipse.debug.ui.AbstractLaunchConfigurationTab {
 
@@ -19,10 +18,6 @@ public class TracerTab extends org.eclipse.debug.ui.AbstractLaunchConfigurationT
 		
 		((GridLayout)composite.getLayout()).verticalSpacing = 0;
 		
-	}
-	
-	private Group createGroup(Composite parent, String title) {
-		return SWTFactory.createGroup(parent, title, 2, 1, GridData.FILL_HORIZONTAL);
 	}
 
 	@Override

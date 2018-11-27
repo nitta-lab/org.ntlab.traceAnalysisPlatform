@@ -61,7 +61,7 @@ public class TracerLaunchConfigurationDelegate extends org.eclipse.jdt.launching
 			ExecutionArguments execArgs = new ExecutionArguments(vmArgs, pgmArgs);
 			
 			// VM-specific attributes
-			Map vmAttributesMap = getVMSpecificAttributesMap(configuration);
+			Map<String, Object> vmAttributesMap = getVMSpecificAttributesMap(configuration);
 			
 			// Classpath
 			String[] configClasspath = getClasspath(configuration);

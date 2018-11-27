@@ -31,7 +31,7 @@ public class TracerClassLoader extends ClassLoader {
 
 			// 自分のクラスローダーを指定してJavaVMのクラスに変換
 			ProtectionDomain pd = this.getClass().getProtectionDomain();
-			Class c = cc.toClass(this, pd);
+			Class<?> c = cc.toClass(this, pd);
 
 			if (resolve) {
 				resolveClass(c);

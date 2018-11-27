@@ -25,8 +25,6 @@ import org.eclipse.jdt.internal.debug.ui.launcher.MainMethodSearchEngine;
 import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.operation.IRunnableContext;
-import org.eclipse.jface.viewers.ISelection;
-import org.eclipse.ui.IEditorPart;
 
 public class TracerLaunchShortcut extends org.eclipse.jdt.debug.ui.launchConfigurations.JavaLaunchShortcut {
 	
@@ -44,7 +42,7 @@ public class TracerLaunchShortcut extends org.eclipse.jdt.debug.ui.launchConfigu
 	 * @since 3.5
 	 */
 	protected IJavaElement[] getJavaElements(Object[] objects) {
-		List list= new ArrayList(objects.length);
+		List<IJavaElement> list = new ArrayList<>(objects.length);
 		for (int i = 0; i < objects.length; i++) {
 			Object object = objects[i];
 			if (object instanceof IAdaptable) {
@@ -52,9 +50,9 @@ public class TracerLaunchShortcut extends org.eclipse.jdt.debug.ui.launchConfigu
 				if (element != null) {
 					if (element instanceof IMember) {
 						// Use the declaring type if available
-						IJavaElement type= ((IMember)element).getDeclaringType();
+						IJavaElement type = ((IMember)element).getDeclaringType();
 						if (type != null) {
-							element= type;
+							element = type;
 						}
 					}
 					list.add(element);

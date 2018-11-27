@@ -1,7 +1,5 @@
 package org.ntlab.traceAnalysisPlatform.tracer;
 
-import java.util.ArrayList;
-
 /**
  * 配列へのアクセス情報を出力するためのクラス
  * @author 新田直也

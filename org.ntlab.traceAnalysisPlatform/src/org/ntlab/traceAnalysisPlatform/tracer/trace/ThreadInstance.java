@@ -1,10 +1,8 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 
 public class ThreadInstance {
 	private ArrayList<MethodExecution> roots = new ArrayList<MethodExecution>();

@@ -9,6 +9,7 @@ import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.internal.localstore.FileSystemResourceManager;
 import org.eclipse.core.internal.resources.Workspace;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -64,30 +65,8 @@ public abstract class InstrumentationHandler extends AbstractHandler {
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
-					// Enable ClassPool of Javassist to fing the classes in the target Java project.
-					String classPath = null;
-					for (IClasspathEntry entry : javaProject.getResolvedClasspath(true)) {
-						if (entry.getEntryKind() == IClasspathEntry.CPE_SOURCE){
-							// The source folder of the target Java project.
-							IPath outputLocation = entry.getOutputLocation();
-							if (outputLocation != null) {
-								// If the output folder is specified individually.
-								Workspace workspace = (Workspace) javaProject.getProject().getWorkspace();
-								FileSystemResourceManager fsm = workspace.getFileSystemManager();
-								URI path = fsm.locationURIFor(workspace.getRoot().getFolder(outputLocation));
-								classPath = path.getPath().substring(1);
-								cp.appendClassPath(classPath);
-							}
-						}
-					}
-					if (classPath == null) {
-						// Specify the output folder of the target Java project.
-						Workspace workspace = (Workspace) javaProject.getProject().getWorkspace();
-						FileSystemResourceManager fsm = workspace.getFileSystemManager();
-						URI path = fsm.locationURIFor(workspace.getRoot().getFolder(javaProject.getOutputLocation()));
-						classPath = path.getPath().substring(1);
-						cp.appendClassPath(classPath);
-					}
+					// Enable ClassPool of Javassist to find the classes in the target Java project.
+					String classPath = addProjectClassPathsToClassPool(javaProject, cp);
 					
 					// Do instrumentation.
 					final String CLASS_PATH = classPath;
@@ -110,6 +89,60 @@ public abstract class InstrumentationHandler extends AbstractHandler {
 			}
 		}
 		return null;
+	}
+
+	private String addProjectClassPathsToClassPool(IJavaProject javaProject, ClassPool cp)
+			throws JavaModelException, NotFoundException {
+		String outputClassPath = null;
+		Workspace workspace = (Workspace) javaProject.getProject().getWorkspace();
+		FileSystemResourceManager fsm = workspace.getFileSystemManager();
+		for (IClasspathEntry entry : javaProject.getResolvedClasspath(true)) {
+			switch (entry.getEntryKind()) {
+			case IClasspathEntry.CPE_SOURCE:
+				// The source folder of the target Java project.
+				IPath outputLocation = entry.getOutputLocation();
+				if (outputLocation != null) {
+					// If the output folder is specified individually.
+					URI path = fsm.locationURIFor(workspace.getRoot().getFolder(outputLocation));
+					outputClassPath = path.getPath().substring(1);
+					System.out.println(outputClassPath);
+					cp.appendClassPath(outputClassPath);
+				}
+				break;
+			case IClasspathEntry.CPE_LIBRARY:
+				// A library referred to by the target Java project.
+				if (entry.getPath().getDevice() != null) {
+					// Maybe JRE system library, the class path of the library should not be appended more than once.
+					System.out.println(entry.getPath().toString());
+					cp.appendClassPath(entry.getPath().toString());								
+				} else {
+					URI path = fsm.locationURIFor(workspace.getRoot().getFolder(entry.getPath()));
+					System.out.println(path.getPath());
+					try {
+						cp.appendClassPath(path.getPath().substring(1));
+					} catch (NotFoundException e) {
+						e.printStackTrace();
+					}
+				}
+				break;
+			case IClasspathEntry.CPE_PROJECT:
+				// A Java project referred to by the target Java project.
+				IResource refProject = workspace.getRoot().findMember(entry.getPath());
+				IJavaProject refJavaProject = (IJavaProject) JavaCore.create(refProject);
+				if (refJavaProject != null) {
+					addProjectClassPathsToClassPool(refJavaProject, cp);
+				}
+				break;
+			}
+		}
+		if (outputClassPath == null) {
+			// Specify the output folder of the target Java project.
+			URI path = fsm.locationURIFor(workspace.getRoot().getFolder(javaProject.getOutputLocation()));
+			outputClassPath = path.getPath().substring(1);
+			System.out.println(outputClassPath);
+			cp.appendClassPath(outputClassPath);
+		}
+		return outputClassPath;
 	}
 	
 	public abstract ITraceGenerator getGenerator();

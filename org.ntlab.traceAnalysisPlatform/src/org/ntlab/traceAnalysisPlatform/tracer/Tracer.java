@@ -47,6 +47,8 @@ public class Tracer {
 	private static ClassPool cp = null;
 	private static CodeConverter conv = null;
 	private static IProgressMonitor monitor = null;
+	
+	private static final int MAX_METHOD_LENGTH = 65535;
 
 	public static void main(String[] args) {
 		initialize(new OutputStatementsGenerator(new JSONTraceGenerator()));		// Specify the output format by the instance of ITraceGenerator
@@ -138,33 +140,37 @@ public class Tracer {
 	 * @param classPath	the base path of the class files to be output (null for not output)
 	 */
 	public static void classInstrumentation(CtClass cc, String classPath) throws BadBytecode, NotFoundException, CannotCompileException, IOException {
-		classInitializerInstrumentation(cc, cc.getClassInitializer());
-		
-		for (final CtConstructor c : cc.getDeclaredConstructors()) {
-			methodInstrumentation(cc, c);
-		}
-		for (final CtMethod m : cc.getDeclaredMethods()) {
-			methodInstrumentation(cc, m);
-		}
 		try {
-			cc.instrument(conv);
-		} catch (CannotCompileException e) {
-			e.printStackTrace();
-		}
-		if (classPath != null) {
-			if (classPath.endsWith("/")) {
-				classPath = classPath.substring(0, classPath.length() - 1);
+			classInitializerInstrumentation(cc, cc.getClassInitializer());
+			
+			for (final CtConstructor c : cc.getDeclaredConstructors()) {
+				methodInstrumentation(cc, c);
 			}
-			System.out.println(classPath + ":" + cc.getName());
-//			cc.rebuildClassFile();
-			cc.getClassFile().compact();		// Without this, a runtime error (java.lang.ClassFormatError: Truncated class file) occurs
-			cc.debugWriteFile(classPath);
-//			cc.defrost();
-			cc.detach();
+			for (final CtMethod m : cc.getDeclaredMethods()) {
+				methodInstrumentation(cc, m);
+			}
+			try {
+				cc.instrument(conv);
+			} catch (CannotCompileException e) {
+				e.printStackTrace();
+			}
+			if (classPath != null) {
+				if (classPath.endsWith("/")) {
+					classPath = classPath.substring(0, classPath.length() - 1);
+				}
+				System.out.println(classPath + ":" + cc.getName());
+//				cc.rebuildClassFile();
+				cc.getClassFile().compact();		// Without this, a runtime error (java.lang.ClassFormatError: Truncated class file) occurs
+				cc.debugWriteFile(classPath);
+//				cc.defrost();
+				cc.detach();
+			}
+		} catch (MethodSizeExcessException e) {
+			e.printStackTrace();
 		}
 	}
 
-	private static void classInitializerInstrumentation(CtClass cc, CtConstructor classInitializer) throws BadBytecode, NotFoundException, CannotCompileException {
+	private static void classInitializerInstrumentation(CtClass cc, CtConstructor classInitializer) throws BadBytecode, NotFoundException, CannotCompileException, MethodSizeExcessException {
 		if (classInitializer != null) {
 			methodInstrumentation(cc, classInitializer);
 		} else {
@@ -176,7 +182,7 @@ public class Tracer {
 		}
 	}
 
-	private static void methodInstrumentation(final CtClass cc, final CtBehavior m) throws BadBytecode, NotFoundException, CannotCompileException {
+	private static void methodInstrumentation(final CtClass cc, final CtBehavior m) throws BadBytecode, NotFoundException, CannotCompileException, MethodSizeExcessException {
 		// Insert the set of output statements at the entry of each basic block in the body of method m. 
 		//  (Since every set of output statements is inserted as a new basic block, the sets of output statements for basic blocks are inserted first.)
 		Block[] blocks = null;
@@ -304,6 +310,9 @@ public class Tracer {
 		}
 		if (m.getMethodInfo().getCodeAttribute() != null) {
 			m.getMethodInfo().getCodeAttribute().computeMaxStack();		// Without this, a runtime error (java.lang.VerifyError: Stack map does not match the one at exception handler...) occurs
+		}
+		if (!m.isEmpty() && m.getMethodInfo().getCodeAttribute().getCodeLength() > MAX_METHOD_LENGTH) {
+			throw new MethodSizeExcessException();
 		}
 	}
 }

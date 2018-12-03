@@ -66,9 +66,17 @@ public class MyPrintStream extends Thread {
 //		} else {
 			// シャットダウン時にバッファに残ったトレースを出力し切る
 //			bFlushed = true;
-			for (String s: output) {
-				sysout.println(s);
-			}			
+		int size = output.size();
+		String s;
+		for (int i = 0; i < size; i++) {
+			synchronized (output) {
+				s = output.get(i);
+			}
+			sysout.println(s);
+			synchronized (output) {
+				size = output.size();	
+			}
+		}			
 //		}
 	}
 	

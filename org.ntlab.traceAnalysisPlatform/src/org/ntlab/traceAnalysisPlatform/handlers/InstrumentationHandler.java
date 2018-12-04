@@ -78,7 +78,7 @@ public abstract class InstrumentationHandler extends AbstractHandler {
 							monitor.beginTask("Running instrumentation...", IProgressMonitor.UNKNOWN);
 							Tracer.packageInstrumentation("", CLASS_PATH + "/");
 							monitor.done();
-							return Status.OK_STATUS;
+							return (monitor.isCanceled()) ? Status.CANCEL_STATUS : Status.OK_STATUS;
 						}
 					};
 					job.setUser(true);

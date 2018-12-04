@@ -1,7 +1,7 @@
 package org.ntlab.traceAnalysisPlatform.tracer;
 
 import java.io.PrintStream;
-import java.util.LinkedList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * トレース出力用ユーティリティ
@@ -11,7 +11,7 @@ import java.util.LinkedList;
  */
 public class MyPrintStream extends Thread {
 	private static MyPrintStream theInstance;
-	private static LinkedList<String> output;
+	private static ConcurrentLinkedQueue<String> output;
 	private static String s = null;
 	private static PrintStream sysout = null;
 //	private static boolean bFlushed = false;
@@ -20,7 +20,7 @@ public class MyPrintStream extends Thread {
 	private static MyPrintStream getInstance() {
 		if (theInstance == null) {
 			theInstance = new MyPrintStream();
-			output = new LinkedList<String>();
+			output = new ConcurrentLinkedQueue<String>();
 			sysout = System.out;
 			Runtime.getRuntime().addShutdownHook(theInstance);		// シャットダウン用
 //			theInstance.start();
@@ -66,16 +66,8 @@ public class MyPrintStream extends Thread {
 //		} else {
 			// シャットダウン時にバッファに残ったトレースを出力し切る
 //			bFlushed = true;
-		int size = output.size();
-		String s;
-		for (int i = 0; i < size; i++) {
-			synchronized (output) {
-				s = output.get(i);
-			}
+		for (String s: output) {
 			sysout.println(s);
-			synchronized (output) {
-				size = output.size();	
-			}
 		}			
 //		}
 	}

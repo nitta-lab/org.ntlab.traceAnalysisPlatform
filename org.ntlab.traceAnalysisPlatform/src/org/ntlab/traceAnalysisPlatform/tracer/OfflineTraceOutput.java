@@ -9,21 +9,18 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * @author Nitta
  *
  */
-public class MyPrintStream extends Thread {
-	private static MyPrintStream theInstance;
+public class OfflineTraceOutput extends Thread {
+	private static OfflineTraceOutput theInstance;
 	private static ConcurrentLinkedQueue<String> output;
 	private static String s = null;
 	private static PrintStream sysout = null;
-//	private static boolean bFlushed = false;
-//	private static int count = 0;
 	
-	private static MyPrintStream getInstance() {
+	private static OfflineTraceOutput getInstance() {
 		if (theInstance == null) {
-			theInstance = new MyPrintStream();
+			theInstance = new OfflineTraceOutput();
 			output = new ConcurrentLinkedQueue<String>();
 			sysout = System.out;
-			Runtime.getRuntime().addShutdownHook(theInstance);		// シャットダウン用
-//			theInstance.start();
+			Runtime.getRuntime().addShutdownHook(theInstance);		// for shutdown
 		}
 		return theInstance;
 	}
@@ -45,31 +42,10 @@ public class MyPrintStream extends Thread {
 	}
 
 	public void run() {
-//		if (count == 0) {
-//			// 通常のトレース出力
-//			count++;
-//			String s;
-//			Runtime.getRuntime().addShutdownHook(new MyPrintStream());		// シャットダウン用にもうひとつインスタンスを作成する
-//			while(!bFlushed) {
-//				try {
-//					Thread.sleep(10);
-//					if (output.size() > 0) {
-//						synchronized (output) {
-//							s = output.remove(0);
-//						}
-//						System.out.println(s);
-//					}
-//				} catch (InterruptedException e) {
-//					e.printStackTrace();
-//				}
-//			}
-//		} else {
-			// シャットダウン時にバッファに残ったトレースを出力し切る
-//			bFlushed = true;
+		// Output a trace file after shutdown.
 		for (String s: output) {
 			sysout.println(s);
 		}			
-//		}
 	}
 	
 	private synchronized void _print(int n) {

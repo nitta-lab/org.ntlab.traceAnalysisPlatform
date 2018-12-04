@@ -21,7 +21,7 @@ public class PlainTextTraceGenerator implements ITraceGenerator {
 			String fieldName, String containerClass, String containerObject, 
 			String valueClass, String valueObject, String threadId, String lineNum, String timeStamp) {
 		return "$proceed($$); " + 
-					Tracer.TRACER + "MyPrintStream.println(\"set:\" + " + containerClass + " + \":\" + " + containerObject + " + \":\" + " + 
+					Tracer.TRACER + "OfflineTraceOutput.println(\"set:\" + " + containerClass + " + \":\" + " + containerObject + " + \":\" + " + 
 													valueClass + " + \":\" + " + valueObject + " + " + LINE_AND_THREAD + threadId + ");";
 	}
 
@@ -30,7 +30,7 @@ public class PlainTextTraceGenerator implements ITraceGenerator {
 			String fieldName, String thisClass, String thisObject, String containerClass, String containerObject, 
 			String valueClass, String valueObject, String threadId, String lineNum, String timeStamp) {
 		return "$_ = $proceed(); " + 
-					Tracer.TRACER + "MyPrintStream.println(\"get:\" + " + thisClass + " + \":\" + " + thisObject + " + \":\" + " + 
+					Tracer.TRACER + "OfflineTraceOutput.println(\"get:\" + " + thisClass + " + \":\" + " + thisObject + " + \":\" + " + 
 													containerClass + " + \":\" + " + containerObject + " + \":\" + " + 
 													valueClass + " + \":\" + " + valueObject + " + " + LINE_AND_THREAD + threadId + ");";
 	}
@@ -52,7 +52,7 @@ public class PlainTextTraceGenerator implements ITraceGenerator {
 		String classOutput = "";
 		String argsOutput = "";
 		// For output arguments
-		String delimiter = Tracer.TRACER + "MyPrintStream.println(\"Args:\" + ";
+		String delimiter = Tracer.TRACER + "OfflineTraceOutput.println(\"Args:\" + ";
 		for (int p = 0; p < argClasses.size(); p++) {
 			argsOutput += delimiter + argClasses.get(p) + " + \":\" + " + argObjects.get(p);
 			delimiter = " + \":\" + ";
@@ -62,11 +62,11 @@ public class PlainTextTraceGenerator implements ITraceGenerator {
 		}
 		if (m instanceof CtConstructor) {
 			// For a constructor
-			newOutput = Tracer.TRACER + "MyPrintStream.println(\"New \" + " + thisClass + " + \":\" + " + thisObject + " + " + LINE_AND_THREAD + threadId + ");";
+			newOutput = Tracer.TRACER + "OfflineTraceOutput.println(\"New \" + " + thisClass + " + \":\" + " + thisObject + " + " + LINE_AND_THREAD + threadId + ");";
 		}
-		methodOutput = Tracer.TRACER + "MyPrintStream.println(\"Method \" + " + thisClass + " + \",\" + " + methodSignature
+		methodOutput = Tracer.TRACER + "OfflineTraceOutput.println(\"Method \" + " + thisClass + " + \",\" + " + methodSignature
 				+ " + \":\" + " + thisObject + " + " + LINE + " + " + timeStamp + " + \":ThreadNo \" + " + threadId + ");";
-		classOutput = Tracer.TRACER + "MyPrintStream.println(\"Class \" + " + thisClass + " + \":\" + " + thisObject + " + " + LINE_AND_THREAD + threadId + ");";
+		classOutput = Tracer.TRACER + "OfflineTraceOutput.println(\"Class \" + " + thisClass + " + \":\" + " + thisObject + " + " + LINE_AND_THREAD + threadId + ");";
 		
 		return newOutput + methodOutput + classOutput + argsOutput;
 	}	
@@ -94,8 +94,8 @@ public class PlainTextTraceGenerator implements ITraceGenerator {
 			}
 		}
 		
-		String returnOutput =  Tracer.TRACER + "MyPrintStream.print(\"Return " + invocationType + "(" + shortName + "):\" + " + returnedClass + " + \":\" + " + returnedObject + " + \":\");" + 
-				Tracer.TRACER + "MyPrintStream.println(\"\" + " + thisObject + " + " + LINE_AND_THREAD + threadId + ");";
+		String returnOutput =  Tracer.TRACER + "OfflineTraceOutput.print(\"Return " + invocationType + "(" + shortName + "):\" + " + returnedClass + " + \":\" + " + returnedObject + " + \":\");" + 
+				Tracer.TRACER + "OfflineTraceOutput.println(\"\" + " + thisObject + " + " + LINE_AND_THREAD + threadId + ");";
 
 		return returnOutput;
 	}

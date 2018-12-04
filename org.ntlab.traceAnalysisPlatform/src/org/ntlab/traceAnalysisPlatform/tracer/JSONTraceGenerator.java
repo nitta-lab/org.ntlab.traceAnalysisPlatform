@@ -31,7 +31,7 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		keys.add("lineNum");	values.add(lineNum);
 		keys.add("time");		values.add(timeStamp);
 		return "$proceed($$); " + 
-				Tracer.TRACER + "MyPrintStream.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
+				Tracer.TRACER + "OfflineTraceOutput.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
 	}
 
 	@Override
@@ -51,7 +51,7 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		keys.add("lineNum");	values.add(lineNum);
 		keys.add("time");		values.add(timeStamp);
 		return "$_ = $proceed(); " + 
-				Tracer.TRACER + "MyPrintStream.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
+				Tracer.TRACER + "OfflineTraceOutput.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
 	}
 	
 
@@ -68,7 +68,7 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		keys.add("lineNum");	values.add(lineNum);
 		keys.add("time");		values.add(timeStamp);
 		return "$_ = $proceed($$); " + 
-				Tracer.TRACER + "MyPrintStream.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
+				Tracer.TRACER + "OfflineTraceOutput.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
 	}
 
 	@Override
@@ -97,7 +97,7 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		keys.add("args");			values.add(generateJSONArrayGenerator(argList));
 		keys.add("threadId");		values.add(threadId);
 		keys.add("time");			values.add(timeStamp);
-		return Tracer.TRACER + "MyPrintStream.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
+		return Tracer.TRACER + "OfflineTraceOutput.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
 	}
 
 	@Override
@@ -119,7 +119,7 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		keys.add("returnValue");	values.add(generateJSONObjectGenerator(returnedClass, returnedObject));
 		keys.add("threadId");		values.add(threadId);
 		keys.add("time");			values.add(timeStamp);
-		return Tracer.TRACER + "MyPrintStream.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
+		return Tracer.TRACER + "OfflineTraceOutput.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
 	}
 
 	@Override
@@ -130,7 +130,7 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		keys.add("callerSideSignature");	values.add(DQ_GEN + " + \"" + m.getLongName().replace('$', '.') + "\" + " + DQ_GEN);		// The name of an anonymous class is delimited by '.' within a method signature by AspectJ.
 		keys.add("threadId");				values.add(threadId);
 		keys.add("lineNum");				values.add(lineNum);
-		return Tracer.TRACER + "MyPrintStream.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
+		return Tracer.TRACER + "OfflineTraceOutput.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
 	}
 
 	@Override
@@ -148,7 +148,7 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		keys.add("threadId");			values.add(threadId);
 		keys.add("lineNum");			values.add(lineNum);
 		keys.add("time");				values.add(timeStamp);
-		return Tracer.TRACER + "MyPrintStream.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
+		return Tracer.TRACER + "OfflineTraceOutput.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
 	}
 
 	@Override
@@ -159,7 +159,7 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		keys.add("name");				values.add(DQ_GEN + " + " + className + " + " + DQ_GEN);
 		keys.add("path");				values.add(DQ_GEN + " + " + classPath + " + " + DQ_GEN);
 		keys.add("loaderPath");			values.add(DQ_GEN + " + " + loaderPath + " + " + DQ_GEN);
-		return Tracer.TRACER + "MyPrintStream.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
+		return Tracer.TRACER + "OfflineTraceOutput.println(" + generateJSONMapGenerator(keys, values) + " + \",\");";
 	}
 	
 	private String generateJSONObjectGenerator(String className, String objectId) {
@@ -200,7 +200,7 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		keys.add("value");		values.add(generateJSONObjectOutput(valueType, valueId));
 		keys.add("threadId");	values.add(Long.toString(threadId));
 		keys.add("time");		values.add(Long.toString(timeStamp));
-		MyPrintStream.println(generateJSONMapOutput(keys, values) + ",");
+		OfflineTraceOutput.println(generateJSONMapOutput(keys, values) + ",");
 	}
 
 	public static void arrayGetOutput(String arrayType, String arrayId, int index, String valueType, String valueId, long threadId, long timeStamp) {
@@ -212,7 +212,7 @@ public class JSONTraceGenerator implements ITraceGenerator {
 		keys.add("value");		values.add(generateJSONObjectOutput(valueType, valueId));
 		keys.add("threadId");	values.add(Long.toString(threadId));
 		keys.add("time");		values.add(Long.toString(timeStamp));
-		MyPrintStream.println(generateJSONMapOutput(keys, values) + ",");
+		OfflineTraceOutput.println(generateJSONMapOutput(keys, values) + ",");
 	}
 	
 	private static String generateJSONObjectOutput(String className, String objectId) {

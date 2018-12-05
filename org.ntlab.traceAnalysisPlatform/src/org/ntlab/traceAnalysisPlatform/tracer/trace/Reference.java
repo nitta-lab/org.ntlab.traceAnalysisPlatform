@@ -1,6 +1,5 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
-
 public class Reference {
 	private String id;
 	private ObjectReference srcObj;			// 参照元オブジェクト

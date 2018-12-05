@@ -1,6 +1,5 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
-
 public class ArrayAccess extends Statement {
 	private String arrayClassName;
 	private String arrayObjectId;

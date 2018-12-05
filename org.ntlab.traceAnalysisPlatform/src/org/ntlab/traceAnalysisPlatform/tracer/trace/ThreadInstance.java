@@ -1,6 +1,7 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -169,7 +170,7 @@ public class ThreadInstance {
 	public MethodExecution getCurrentMethodExecution() {
 		return curMethodExecution;
 	}
-		
+	
 	public TracePoint getCurrentTracePoint() {
 		return new TracePoint(curMethodExecution, curMethodExecution.getStatements().size() - 1);
 	}

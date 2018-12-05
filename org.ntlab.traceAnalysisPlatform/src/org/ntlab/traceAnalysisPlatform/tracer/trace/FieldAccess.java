@@ -1,6 +1,5 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
-
 public class FieldAccess extends Statement {
 	private String fieldName;
 	private String containerClassName;

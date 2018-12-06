@@ -25,5 +25,5 @@ public class Statement {
 
 	public long getTimeStamp() {
 		return timeStamp;
-	}	
+	}
 }

@@ -4,9 +4,13 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Stack;
 
 public class TraceJSON extends Trace {
@@ -21,7 +25,7 @@ public class TraceJSON extends Trace {
 	 * 指定したJSONのトレースファイルを解読して Trace オブジェクトを生成する
 	 * @param file トレースファイル
 	 */
-	private TraceJSON(BufferedReader file) {
+	public TraceJSON(BufferedReader file) {
 		try {
 			readJSON(file);
 			file.close();		
@@ -34,7 +38,7 @@ public class TraceJSON extends Trace {
 	 * 指定したJSONのトレースファイルを解読して Trace オブジェクトを生成する
 	 * @param traceFile トレースファイルのパス
 	 */
-	private TraceJSON(String traceFile) {
+	public TraceJSON(String traceFile) {
 		BufferedReader file;
 		try {
 			file = new BufferedReader(new FileReader(traceFile));

@@ -1,6 +1,5 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
-
 public class MethodInvocation extends Statement {
 	private MethodExecution calledMethodExecution = null;
 	protected String thisClassName;
@@ -48,5 +47,5 @@ public class MethodInvocation extends Statement {
 
 	public String getCallerSideMethodName() {
 		return callerSideMethodName;
-	}	
+	}
 }

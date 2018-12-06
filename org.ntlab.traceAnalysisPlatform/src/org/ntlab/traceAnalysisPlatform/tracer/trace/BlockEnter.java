@@ -1,6 +1,5 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
-
 public class BlockEnter extends Statement {
 	private int blockId;
 	private int incomings;

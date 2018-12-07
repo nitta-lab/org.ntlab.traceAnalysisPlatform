@@ -5,6 +5,11 @@ import java.security.ProtectionDomain;
 import javassist.ClassPool;
 import javassist.CtClass;
 
+/**
+ * A class loader for load time instrumentation (currently not used)
+ * @author Nitta
+ *
+ */
 public class TracerClassLoader extends ClassLoader {
 	
 	public TracerClassLoader(ClassLoader parent) {
@@ -13,23 +18,23 @@ public class TracerClassLoader extends ClassLoader {
 
 	@Override
 	protected synchronized Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-		Tracer.initialize(new OutputStatementsGenerator(new JSONTraceGenerator()));		// 引数で出力フォーマットを指定する
+		Tracer.initialize(new OutputStatementsGenerator(new JSONTraceGenerator()));		// to specify output format
 
-		// "java"で始まるパッケージはシステム系なのでデフォルトのクラスローダーに任せる
+		// The following packages are the default class loader.
 		if (name.startsWith("java") || name.startsWith("sun.") || name.startsWith("com.sun.") || name.startsWith(Tracer.TRACER)) {
 			return super.loadClass(name, resolve);
 		}
 		
 		try {
-			// ロードしたいクラスをJavassist内から取得
+			// Get the class to load from the class pool object.
 			ClassPool classPool = ClassPool.getDefault();
 			CtClass cc = classPool.get(name);
 			if (!cc.isFrozen()) {
-				// 変更可能なときだけインストゥルメンテーションを行う
+				// Instrument only if it is modifiable
 				Tracer.classInstrumentation(cc, null);
 			}
 
-			// 自分のクラスローダーを指定してJavaVMのクラスに変換
+			// Convert to a JavaVM class by specifying this class loader
 			ProtectionDomain pd = this.getClass().getProtectionDomain();
 			Class<?> c = cc.toClass(this, pd);
 

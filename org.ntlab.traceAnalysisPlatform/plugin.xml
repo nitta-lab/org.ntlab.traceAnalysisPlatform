@@ -2,7 +2,7 @@
 <?eclipse version="3.6"?>
 <plugin>
    <extension-point id="additionalClasspaths" name="%ExtPoint.additionalClasspaths" schema="schema/additionalClasspaths.exsd"/>
-	<!-- プロジェクト全体に対してインストゥルメンテーションを行う -->
+	<!-- Instrumentation commands for online/offline analyses -->
 	<extension
 			point="org.eclipse.ui.handlers">
 	  	<handler
@@ -51,7 +51,7 @@
 		</menuContribution>
 	</extension>
 	
-	<!-- ロード時にトレーサを埋め込んで実行 -->
+	<!-- Run/Debug as Java Application with Tracer commands -->
 	<extension
 		point="org.eclipse.debug.ui.launchShortcuts">
 		<shortcut

@@ -1,5 +1,10 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
+/**
+ * An execution of an array get statement in a trace
+ * @author Nitta
+ *
+ */
 public class ArrayAccess extends Statement {
 	private String arrayClassName;
 	private String arrayObjectId;

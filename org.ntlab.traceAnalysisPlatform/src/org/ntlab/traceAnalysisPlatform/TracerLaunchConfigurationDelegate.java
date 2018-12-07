@@ -22,7 +22,7 @@ import org.ntlab.traceAnalysisPlatform.tracer.Tracer;
 import com.ibm.icu.text.MessageFormat;
 
 /**
- * トレース出力付きで選択したプログラムを実行するコマンド
+ * Run/Debug as Java Application with Tracer commands
  * 
  * @author Nitta
  *

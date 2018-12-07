@@ -17,7 +17,6 @@ public class TracerTab extends org.eclipse.debug.ui.AbstractLaunchConfigurationT
 			SWTFactory.createComposite(parent, parent.getFont(), 1, 1, GridData.FILL_BOTH);
 		
 		((GridLayout)composite.getLayout()).verticalSpacing = 0;
-		
 	}
 
 	@Override

@@ -1,5 +1,10 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
+/**
+ * An execution of a block entry in a trace
+ * @author Nitta
+ *
+ */
 public class BlockEnter extends Statement {
 	private int blockId;
 	private int incomings;

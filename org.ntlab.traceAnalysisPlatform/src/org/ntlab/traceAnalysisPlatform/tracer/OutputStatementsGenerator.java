@@ -15,7 +15,7 @@ import javassist.expr.FieldAccess;
 import javassist.expr.NewArray;
 
 /**
- * トレース出力を行う実行文を生成するクラス（フォーマット依存部分はITraceGeneratorに移譲）
+ * Generator of statements to output a trace （with delegating output format dependent part to ITraceGenerator）
  * 
  * @author Nitta
  *
@@ -41,11 +41,11 @@ public class OutputStatementsGenerator {
 			valueClass = "(($1 != null)?$1.getClass().getName():\"---\")";
 			valueObject = "(($1 != null)?System.identityHashCode($1):0)";
 		} else {
-			valueClass = "\"" + f.getField().getType().getName() + "\"";		// 基本型の場合、getClass()できないため
+			valueClass = "\"" + f.getField().getType().getName() + "\"";		// because getClass() is not defined in primitive types
 			if (f.getField().getType() != CtClass.charType) {
 				valueObject = "$1";
 			} else {
-				valueObject = "Character.getNumericValue($1)";					// 文字型の場合文字が出力されてしまうため				
+				valueObject = "Character.getNumericValue($1)";					// because the string value is output for the string type
 			}
 		}
 		String threadId = "Thread.currentThread().getId()";
@@ -62,7 +62,7 @@ public class OutputStatementsGenerator {
 			thisClass = "this.getClass().getName()";
 			thisObject = "System.identityHashCode(this)";
 		} else {
-			// staticメソッドかコンストラクタの場合
+			// In the case of a static method or a constructor
 			thisClass = "\"" + cc.getName() + "\"";
 			thisObject = "\"0\"";
 		}
@@ -74,11 +74,11 @@ public class OutputStatementsGenerator {
 			valueClass = "(($_ != null)?$_.getClass().getName():\"---\")";
 			valueObject = "(($_ != null)?System.identityHashCode($_):0)";
 		} else {
-			valueClass = "\"" + f.getField().getType().getName() + "\"";		// 基本型の場合、getClass()できないため
+			valueClass = "\"" + f.getField().getType().getName() + "\"";		// because getClass() is not defined in primitive types
 			if (f.getField().getType() != CtClass.charType) {
 				valueObject = "$_";
 			} else {
-				valueObject = "Character.getNumericValue($_)";					// 文字型の場合文字が出力されてしまうため				
+				valueObject = "Character.getNumericValue($_)";					// because the string value is output for the string type
 			}
 		}
 		String threadId = "Thread.currentThread().getId()";
@@ -100,10 +100,10 @@ public class OutputStatementsGenerator {
 	
 	public String generateReplaceStatementsForCall(CtClass cls, CtBehavior m, int line, boolean canManipulateCalledMethod) throws NotFoundException {
 		if (canManipulateCalledMethod) {
-			// 呼び出し先に埋め込むことができる場合
+			// In the case that the callee can be instrumented
 			return generateInsertStatementsForCall(cls, m, line) + " $_ = $proceed($$);";
 		} else {
-			// 呼び出し先に埋め込むことができない場合
+			// In the case that the callee cannot be instrumented
 			return generateInsertStatementsForCall(cls, m, line) + generateInsertBeforeStatements(cls, m, true) + " $_ = $proceed($$); " + generateInsertAfterStatements(cls, m, true);
 		}
 	}
@@ -117,15 +117,15 @@ public class OutputStatementsGenerator {
 	}
 	
 	/**
-	 * トレース出力用の命令列を生成する
-	 * @param cls 対象クラス
-	 * @param m 対象メソッド(コンストラクタ)
-	 * @param isCallerSideInstrumentation 命令列を呼び出し側に挿入するか呼び出される側に挿入するか?
+	 * Generate statements to output a trace
+	 * @param cls a target class
+	 * @param m   a target method(or constructor)
+	 * @param isCallerSideInstrumentation whether the generated statements are to be instrumented into the caller side or callee side?
 	 * @return
 	 * @throws NotFoundException
 	 */
 	private String generateInsertBeforeStatements(CtClass cls, CtBehavior m, boolean isCallerSideInstrumentation) throws NotFoundException {
-		// メソッドシグニチャの構成
+		// Synthesize the method signature
 		String declaredClassName = cls.getName();
 		String modifiers = "";
 		if ((m.getModifiers() & Modifier.PUBLIC) != 0) {
@@ -148,29 +148,29 @@ public class OutputStatementsGenerator {
 		String thisObject;
 		String methodSignature = null;
 		if ((m.getModifiers() & Modifier.STATIC) != 0 && m instanceof CtMethod) {
-			// staticメソッドの場合
-			methodSignature = "\"" + modifiers + ((CtMethod)m).getReturnType().getName() + " " + m.getLongName().replace('$', '.') + "\"";	// AspectJではメソッドシグニチャ内では無名クラスはドットで区切られる
+			// In the case of a static method
+			methodSignature = "\"" + modifiers + ((CtMethod)m).getReturnType().getName() + " " + m.getLongName().replace('$', '.') + "\"";	//  for the compatibility with AspectJ version
 			thisClass = "\"" + declaredClassName + "\"";
 			thisObject = "\"0\"";
 		} else if (m instanceof CtConstructor) {
-			// コンストラクタの場合(クラス初期化子の場合もある)
-			methodSignature = "\"" + modifiers + m.getLongName().replace('$', '.') + "\"";	// AspectJではメソッドシグニチャ内では無名クラスはドットで区切られる
+			// In the case of a constructor (or class initializer)
+			methodSignature = "\"" + modifiers + m.getLongName().replace('$', '.') + "\"";	// for the compatibility with AspectJ version
 			thisClass = "\"" + declaredClassName + "\"";
 			thisObject = "\"0\"";
 		} else {
-			// 通常メソッドの場合
-			methodSignature = "\"" + modifiers + ((CtMethod)m).getReturnType().getName() + " " + m.getLongName().replace('$', '.') + "\"";	// AspectJではメソッドシグニチャ内では無名クラスはドットで区切られる
+			// In the case of a standard method
+			methodSignature = "\"" + modifiers + ((CtMethod)m).getReturnType().getName() + " " + m.getLongName().replace('$', '.') + "\"";	//  for the compatibility with AspectJ version
 			if (!isCallerSideInstrumentation) {
-				// 呼び出し先に埋め込む場合(通常)
+				// In the case of callee instrumentation (normal)
 				thisClass = "this.getClass().getName()";
 				thisObject = "System.identityHashCode(this)";
 			} else {
-				// 呼出し元に埋め込む場合(標準クラスの呼出し)				
+				// In the case of caller instrumentation (a call to a standard class)				
 				thisClass = "$0.getClass().getName()";
 				thisObject = "System.identityHashCode($0)";
 			}
 		}
-		// 引数の出力式の構成
+		// Synthesize the statements to output the arguments
 		int p = 0;
 		CtClass parameterClasses[] = m.getParameterTypes();
 		ArrayList<String> argClasses = new ArrayList<>();
@@ -180,11 +180,11 @@ public class OutputStatementsGenerator {
 				argClasses.add("(($" + (p + 1) + " != null)?($" + (p + 1) + ").getClass().getName():\"" + c.getName() + "\")");
 				argObjects.add("(($" + (p + 1) + " != null)?System.identityHashCode($" + (p + 1) + "):0)");
 			} else {
-				argClasses.add("\"" + c.getName() + "\"");								// 基本型の場合、getClass()できないため
+				argClasses.add("\"" + c.getName() + "\"");								// because getClass() is not defined in primitive types
 				if (c != CtClass.charType) {
 					argObjects.add("$" + (p + 1));
 				} else {
-					argObjects.add("Character.getNumericValue($" + (p + 1) + ")");		// 文字型の場合文字が出力されてしまうため				
+					argObjects.add("Character.getNumericValue($" + (p + 1) + ")");		// because the string value is output for the string type				
 				}
 			}
 			p++;
@@ -202,78 +202,78 @@ public class OutputStatementsGenerator {
 		String thisClass;
 		String thisObject;
 		if ((m.getModifiers() & Modifier.STATIC) != 0 && m instanceof CtMethod) {
-			// staticメソッドの場合
+			// In the case of a static method
 			if (!((CtMethod)m).getReturnType().isPrimitive() || ((CtMethod)m).getReturnType() == CtClass.voidType) {
 				returnedClass = "(($_ != null)?$_.getClass().getName():\"void\")";
 				returnedObject = "(($_ != null)?System.identityHashCode($_):0)";
 				thisClass = "\"" + declaredClassName + "\"";
 				thisObject = "\"0\"";
 			} else {
-				returnedClass = "\"" + ((CtMethod)m).getReturnType().getName() +"\"";	// void と基本型の場合、getClass()できないため
+				returnedClass = "\"" + ((CtMethod)m).getReturnType().getName() +"\"";	// because getClass() is not defined in primitive types and the void type
 				if (((CtMethod)m).getReturnType() != CtClass.charType) {
 					returnedObject = "$_";
 				} else {
-					returnedObject = "Character.getNumericValue($_)";					// 文字型の場合文字が出力されてしまうため				
+					returnedObject = "Character.getNumericValue($_)";					// because the string value is output for the string type				
 				}
 				thisClass = "\"" + declaredClassName + "\"";
 				thisObject = "\"0\"";
 			}
 		} else if (m instanceof CtConstructor) {
-			// コンストラクタの場合(クラス初期化子の場合もある)
+			// In the case of a constructor (or class initializer)
 			if (!isCallerSideInstrumentation) {
-				// 呼び出し先に埋め込む場合
+				// In the case of callee instrumentation
 				if ((m.getModifiers() & Modifier.STATIC) == 0) {
-					// 通常のコンストラクタの場合
+					// In the case of a normal constructor
 					returnedClass = "$0.getClass().getName()";
 					returnedObject = "System.identityHashCode($0)";
 					thisClass = "\"" + declaredClassName + "\"";
 					thisObject = "System.identityHashCode($0)";
 				} else {
-					// クラス初期化子の場合
+					// In the case of a class initializer
 					returnedClass = "\"void\"";
 					returnedObject = "\"0\"";
 					thisClass = "\"" + declaredClassName + "\"";
 					thisObject = "\"0\"";
 				}
 			} else {
-				// 呼出し元に埋め込む場合(標準クラスもしくはデフォルトコンストラクタの呼出し、または親コンストラクタの呼出し)
+				// In the case of caller instrumentation (a call to a constructor of a standard class, a default constructor or a super constructor)
 				returnedClass = "(($_ != null)?$_.getClass().getName():$0.getClass().getName())";
 				returnedObject = "(($_ != null)?System.identityHashCode($_):System.identityHashCode($0))";
 				thisClass = "\"" + declaredClassName + "\"";
 				thisObject = "(($_ != null)?System.identityHashCode($_):System.identityHashCode($0))";
 			}
 		} else {
-			// 通常のメソッドの場合
+			// In the case of a standard method
 			if (!isCallerSideInstrumentation) {
-				// 呼び出し先に埋め込む場合(通常)
+				// In the case of callee instrumentation (normal)
 				if (!((CtMethod)m).getReturnType().isPrimitive() || ((CtMethod)m).getReturnType() == CtClass.voidType) {
 					returnedClass = "(($_ != null)?$_.getClass().getName():\"void\")";
 					returnedObject = "(($_ != null)?System.identityHashCode($_):0)";
 					thisClass = "this.getClass().getName()"; 
 					thisObject = "System.identityHashCode(this)";
 				} else {
-					returnedClass = "\"" + ((CtMethod)m).getReturnType().getName() +"\"";		// void と基本型の場合、getClass()できないため
+					returnedClass = "\"" + ((CtMethod)m).getReturnType().getName() +"\"";		// because getClass() is not defined in primitive types and the void type
 					if (((CtMethod)m).getReturnType() != CtClass.charType) {
 						returnedObject = "$_";
 					} else {
-						returnedObject = "Character.getNumericValue($_)";						// 文字型の場合文字が出力されてしまうため				
+						returnedObject = "Character.getNumericValue($_)";						// because the string value is output for the string type				
 					}
 					thisClass = "this.getClass().getName()"; 
 					thisObject = "System.identityHashCode(this)";
 				}
 			} else {
-				// 呼出し元に埋め込む場合(標準クラスの呼出し)
+				// In the case of caller instrumentation (a call to a standard class)				
 				if (!((CtMethod)m).getReturnType().isPrimitive() || ((CtMethod)m).getReturnType() == CtClass.voidType) {
 					returnedClass = "(($_ != null)?$_.getClass().getName():\"void\")";
 					returnedObject = "(($_ != null)?System.identityHashCode($_):0)";
 					thisClass = "$0.getClass().getName()"; 
 					thisObject = "System.identityHashCode($0)";
 				} else {
-					returnedClass = "\"" + ((CtMethod)m).getReturnType().getName() +"\"";		// void と基本型の場合、getClass()できないため
+					returnedClass = "\"" + ((CtMethod)m).getReturnType().getName() +"\"";		//  because getClass() is not defined in primitive types and the void type
 					if (((CtMethod)m).getReturnType() != CtClass.charType) {
 						returnedObject = "$_";
 					} else {
-						returnedObject = "Character.getNumericValue($_)";						// 文字型の場合文字が出力されてしまうため				
+						returnedObject = "Character.getNumericValue($_)";						// because the string value is output for the string type				
 					}
 					thisClass = "$0.getClass().getName()"; 
 					thisObject = "System.identityHashCode($0)";
@@ -305,8 +305,8 @@ public class OutputStatementsGenerator {
 	public String generateInsertBeforeStatementsForClassDefinition(CtClass cc, CtConstructor classInitializer) throws NotFoundException {
 		try {
 			String className = "\"" + cc.getName() + "\"";
-			String classPath = "\"" + URLDecoder.decode(cc.getURL().getPath(), "UTF-8") + "\"";		// パスが URL encode になっているため
-			String loaderPath = "\"" + URLDecoder.decode(cc.getClassPool().getClassLoader().getResource("").getPath(), "UTF-8") + "\"";		// パスが URL encode になっているため
+			String classPath = "\"" + URLDecoder.decode(cc.getURL().getPath(), "UTF-8") + "\"";		// because the path is URL encoded
+			String loaderPath = "\"" + URLDecoder.decode(cc.getClassPool().getClassLoader().getResource("").getPath(), "UTF-8") + "\"";		// because the path is URL encoded
 			return generator.generateInsertBeforeStatementsForClassDefinition(className, classPath, loaderPath);
 		} catch (UnsupportedEncodingException e) {
 			return "";

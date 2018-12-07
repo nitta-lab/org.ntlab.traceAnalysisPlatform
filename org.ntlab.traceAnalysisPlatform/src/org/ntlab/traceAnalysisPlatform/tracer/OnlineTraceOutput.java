@@ -7,11 +7,15 @@ import org.ntlab.traceAnalysisPlatform.tracer.trace.ObjectReference;
 import org.ntlab.traceAnalysisPlatform.tracer.trace.ThreadInstance;
 import org.ntlab.traceAnalysisPlatform.tracer.trace.TraceJSON;
 
+/**
+ * A wrapper class to record an online trace
+ *
+ */
 public class OnlineTraceOutput {
 	private static ThreadInstance thread = null;
 
 	public static synchronized void onlineTraceClassDefinition(String className, String classPath, String loaderPath) {
-		// classPathとloaderPathについては先頭の / を取り除いて記録する
+		// remove the head character '/' of the classPath and the loaderPath
 		TraceJSON.initializeClass(className, classPath.substring(1), loaderPath.substring(1));
 	}
 
@@ -37,9 +41,9 @@ public class OnlineTraceOutput {
 			stack = TraceJSON.getStacks().get(threadId);
 		}
 		stack.push(signature);
-		// メソッド呼び出しの設定
+		// Specify a method call
 		thread.callMethod(signature, null, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
-		// 引数の設定
+		// Specify its arguments
 		ArrayList<ObjectReference> arguments = new ArrayList<>();
 		String[] args = argList.split(",");
 		for (int i = 0; i < args.length - 1; i += 2) {
@@ -63,9 +67,9 @@ public class OnlineTraceOutput {
 			stack = TraceJSON.getStacks().get(threadId);
 		}
 		stack.push(signature);
-		// メソッド呼び出しの設定
+		// Specify a method call
 		thread.callMethod(signature, null, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
-		// 引数の設定
+		// Specify its arguments
 		ArrayList<ObjectReference> arguments = new ArrayList<>();
 		String[] args = argList.split(",");
 		for (int i = 0; i < args.length - 1; i += 2) {
@@ -85,7 +89,7 @@ public class OnlineTraceOutput {
 				do {
 					stack.pop();
 					thread.terminateMethod();
-					if (stack.isEmpty()) break;
+					if (stack.isEmpty()) break;	// add this statement tentatively
 					line2 = stack.peek();
 				} while (!stack.isEmpty() && !line2.endsWith(shortSignature));
 				if (!stack.isEmpty()) stack.pop();
@@ -101,7 +105,7 @@ public class OnlineTraceOutput {
 					|| thisClassName.contains("java.lang.Thread")) {
 				isCollectionType = true;
 			}
-			// メソッドからの復帰の設定
+			// Specify the return from a method
 			thread.returnMethod(returnVal, thisObjectId, isCollectionType, timeStamp);
 		}
 	}
@@ -119,7 +123,7 @@ public class OnlineTraceOutput {
 				do {
 					stack.pop();
 					thread.terminateMethod();
-					if (stack.isEmpty()) break; // この一文を仮に追加(MethodExitの方も同様)
+					if (stack.isEmpty()) break; // add this statement tentatively (as is the case with MethodExit)
 					line2 = stack.peek();
 				} while (!stack.isEmpty() && !line2.endsWith(shortSignature));
 				if (!stack.isEmpty()) stack.pop();
@@ -135,7 +139,7 @@ public class OnlineTraceOutput {
 					|| thisClassName.contains("java.lang.Thread")) {
 				isCollectionType = true;
 			}
-			// メソッドからの復帰の設定
+			// Specify the return from a method
 			thread.returnMethod(returnVal, thisObjectId, isCollectionType, timeStamp);
 		}
 	}

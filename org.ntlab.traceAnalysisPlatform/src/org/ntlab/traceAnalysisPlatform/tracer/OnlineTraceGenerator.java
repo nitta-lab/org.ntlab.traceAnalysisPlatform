@@ -8,7 +8,7 @@ import javassist.CtConstructor;
 import javassist.CtMethod;
 
 /**
- * Online trace specific part of OutputStatementsGenerator (for offline analysis)
+ * Online trace specific part of OutputStatementsGenerator (for online analysis)
  *
  */
 public class OnlineTraceGenerator implements ITraceGenerator {

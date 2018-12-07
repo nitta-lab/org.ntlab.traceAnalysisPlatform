@@ -1,5 +1,10 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
+/**
+ * An execution of a field set statement in a trace
+ * @author Nitta
+ *
+ */
 public class FieldUpdate extends Statement {
 	private String fieldName;
 	private String containerClassName;

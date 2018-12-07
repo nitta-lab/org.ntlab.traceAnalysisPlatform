@@ -29,7 +29,7 @@ import org.eclipse.jface.operation.IRunnableContext;
 public class TracerLaunchShortcut extends org.eclipse.jdt.debug.ui.launchConfigurations.JavaLaunchShortcut {
 	
 	/**
-	 * Šg’£ƒ|ƒCƒ“ƒg org.eclipse.debug.core.launchConfigurationTypes ‚Ì ID
+	 * The ID of org.eclipse.debug.core.launchConfigurationTypes
 	 */
 	private static final String LAUNCH_CONFIGURATION_TYPE_ID = "org.ntlab.traceAnalysisPlatform.launchConfigurationType";
 	

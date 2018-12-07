@@ -1,10 +1,15 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
+/**
+ * A reference to an object in a trace
+ * @author Nitta
+ *
+ */
 public class ObjectReference {
-	private String id;
-	private String actualType = null;		// 実際の型
-	private String calleeType = null;		// 呼び出し先メソッド内での型(静的に決定できる型)
-	private String callerType = null;		// 呼び出し元メソッド内での型(静的に決定できる型)
+	private String id;						// the object id
+	private String actualType = null;		// the real type
+	private String calleeType = null;		// the type as a formal parameter (statically determined)
+	private String callerType = null;		// the type as an actual parameter (statically determined)
 
 	public ObjectReference(String id) {
 		this.id = id;

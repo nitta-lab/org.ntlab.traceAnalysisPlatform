@@ -1,5 +1,10 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
+/**
+ * An execution of an array create statement in a trace
+ * @author Nitta
+ *
+ */
 public class ArrayCreate extends Statement {
 	private String arrayClassName;
 	private String arrayObjectId;

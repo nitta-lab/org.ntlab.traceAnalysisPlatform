@@ -1,5 +1,10 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
+/**
+ * An execution of an array set statement in a trace
+ * @author Nitta
+ *
+ */
 public class ArrayUpdate extends Statement {
 	private String arrayClassName;
 	private String arrayObjectId;

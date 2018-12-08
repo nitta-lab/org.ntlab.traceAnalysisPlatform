@@ -20,7 +20,6 @@ import java.util.Stack;
  */
 public class TraceJSON extends Trace {
 	private HashMap<String, ClassInfo> classes = new HashMap<>();
-	private HashMap<String, Stack<String>> stacks = new HashMap<String, Stack<String>>();
 	
 	private TraceJSON() {
 		
@@ -54,13 +53,6 @@ public class TraceJSON extends Trace {
 		}
 	}
 	
-	public static TraceJSON getInstance() {
-		if (theTrace == null) {
-			theTrace = new TraceJSON();
-		}
-		return (TraceJSON)theTrace;
-	}
-
 	private void readJSON(BufferedReader file) throws IOException {
 		// Read a trace file.
 		String line = null;
@@ -398,7 +390,7 @@ public class TraceJSON extends Trace {
 			}
 		}
 	}
-
+	
 	/**
 	 * Parse a JSON object containing a class name and an object ID.
 	 * @param classNameAndObjectIdJSON a JSON object in this trace
@@ -424,12 +416,52 @@ public class TraceJSON extends Trace {
 		return argumentsData;
 	}
 
-	public static void initializeClass(String name, String path, String loaderPath) {
-		getInstance().classes.put(name, new ClassInfo(name, path, loaderPath));
+	/**
+	 * Get the singleton object to record an online trace.
+	 * @return
+	 */
+	public static TraceJSON getInstance() {
+		if (theTrace == null) {
+			theTrace = new TraceJSON();
+		}
+		return (TraceJSON)theTrace;
+	}
+	
+	/**
+	 * Get the thread instance by thread ID.
+	 * @param threadId thread ID
+	 * @return corresponding thread instance
+	 */
+	public static ThreadInstance getThreadInstance(String threadId) {
+		return getInstance().threads.get(threadId);
+	}
+	
+	/**
+	 * Get the current method execution in a specified thread (for online analysis).
+	 * @param thread a thread in this trace
+	 * @return thread the current method in the thread
+	 */
+	public static MethodExecution getCurrentMethodExecution(Thread thread) {
+		ThreadInstance t = getInstance().threads.get(String.valueOf(thread.getId()));
+		return t.getCurrentMethodExecution();
+	}
+	
+	/**
+	 * Get the current execution point in a specified thread (for online analysis).
+	 * @param thread a thread in this trace
+	 * @return thread the current execution point in the thread
+	 */
+	public static TracePoint getCurrentTracePoint(Thread thread) {
+		ThreadInstance t = getInstance().threads.get(String.valueOf(thread.getId()));
+		return t.getCurrentTracePoint();
 	}
 
-	public static ClassInfo getClassInfo(String className) {
-		return getInstance().classes.get(className);
+	public void initializeClass(String name, String path, String loaderPath) {
+		classes.put(name, new ClassInfo(name, path, loaderPath));
+	}
+
+	public ClassInfo getClassInfo(String className) {
+		return classes.get(className);
 	}
 	
 	public TracePoint getArraySetTracePoint(final Reference ref, TracePoint before) {
@@ -644,145 +676,109 @@ public class TraceJSON extends Trace {
 		return flows;
 	}
 
-	public static HashMap<String, ClassInfo> getClasses() {
-		return getInstance().classes;
-	}
-	
-	public static HashMap<String, ThreadInstance> getThreads() {
-		return getInstance().threads;
-	}
-	
-	public static HashMap<String, Stack<String>> getStacks() {
-		return getInstance().stacks;
-	}
-	
-	public static ThreadInstance getThreadInstance(String threadId) {
-		return getInstance().threads.get(threadId);
-	}
-	
-	/**
-	 * Get the current method execution in a specified thread (for online analysis).
-	 * @param thread a thread in this trace
-	 * @return thread the current method in the thread
-	 */
-	public static MethodExecution getCurrentMethodExecution(Thread thread) {
-		ThreadInstance t = getInstance().threads.get(String.valueOf(thread.getId()));
-		return t.getCurrentMethodExecution();
-	}
-	
-	/**
-	 * Get the current execution point in a specified thread (for online analysis).
-	 * @param thread a thread in this trace
-	 * @return thread the current execution point in the thread
-	 */
-	public static TracePoint getCurrentTracePoint(Thread thread) {
-		ThreadInstance t = getInstance().threads.get(String.valueOf(thread.getId()));
-		return t.getCurrentTracePoint();
-	}
-
-	/**
-	 * Get the last update of a specified field of a specified container in a specified thread (for online analysis). 
-	 * @param containerObjId a container object 
-	 * @param fieldName      a field name of the object 
-	 * @param thread         a thread
-	 * @return the corresponding field update
-	 */
-	public static FieldUpdate getRecentlyFieldUpdate(String containerObjId, String fieldName, Thread thread) {
-		TracePoint before = getCurrentTracePoint(thread);
-		if (!before.isValid()) {
-			before.stepBackOver();
-			if (!before.isValid()) {
-				return null; // Cannot backward traverse any more (for example, the entry point of the root method) (without this, TimeoutException occurs at runtime).
-			}
-		}
-		TracePoint tp = getFieldUpdateTracePoint(containerObjId, fieldName, before);
-		if (tp != null && tp.getStatement() instanceof FieldUpdate) {
-			return (FieldUpdate)tp.getStatement();				
-		}
-		return null;
-	}
-
-	/**
-	 * Get the last update of a specified field of a specified container before a specified execution point (for online analysis).
-	 * @param containerObjId a container object 
-	 * @param fieldName      a field name of the object 
-	 * @param before         an execution point
-	 * @return the corresponding execution point in this trace
-	 */
-	public static TracePoint getFieldUpdateTracePoint(final String containerObjId, final String fieldName, TracePoint before) {		
-		before = before.duplicate();
-		before = getInstance().traverseStatementsInTraceBackward(new IStatementVisitor() {
-			@Override
-			public boolean preVisitStatement(Statement statement) {
-				if (statement instanceof FieldUpdate) {
-					FieldUpdate fu = (FieldUpdate)statement;					
-					if (fu.getContainerObjId().equals(containerObjId)
-							&& fu.getFieldName().equals(fieldName)) {
-						// Matches with both array objectID and the index
-						return true;
-					}
-				}
-				return false;
-			}
-			@Override
-			public boolean postVisitStatement(Statement statement) { return false; }
-		}, before);
-		if (before != null) {
-			return before;			
-		}
-		return null;
-	}
-	
-	/**
-	 * Get the last update of a specified element of a specified array object in a specified thread (for online analysis).
-	 * @param arrayObjId an array object
-	 * @param index      an index of an element
-	 * @param thread     a thread
-	 * @return the corresponding array update
-	 */
-	public static ArrayUpdate getRecentlyArrayUpdate(String arrayObjId, int index, Thread thread) {
-		TracePoint before = getCurrentTracePoint(thread);
-		if (!before.isValid()) {
-			before.stepBackOver();
-			if (!before.isValid()) {
-				return null; // Cannot backward traverse any more (for example, the entry point of the root method) (without this, TimeoutException occurs at runtime).
-			}
-		}
-		TracePoint tp = getArrayUpdateTracePoint(arrayObjId, index, before);
-		if (tp != null && tp.getStatement() instanceof ArrayUpdate) {
-			return (ArrayUpdate)tp.getStatement();
-		}
-		return null;		
-	}
-
-	/**
-	 * Get the last update of a specified element of a specified array object before a specified execution point (for online analysis).
-	 * @param arrayObjId an array object
-	 * @param index      an index of an element
-	 * @param before     an execution point
-	 * @return the corresponding execution point in this trace
-	 */
-	public static TracePoint getArrayUpdateTracePoint(final String arrayObjId, final int index, TracePoint before) {		
-		before = before.duplicate();
-		before = getInstance().traverseStatementsInTraceBackward(new IStatementVisitor() {
-			@Override
-			public boolean preVisitStatement(Statement statement) {
-				if (statement instanceof ArrayUpdate) {
-					ArrayUpdate au = (ArrayUpdate)statement;
-					if (au.getArrayObjectId().equals(arrayObjId)
-							&& au.getIndex() == index) {
-						// Matches with both array objectID and the index
-						return true;
-					}
-				}
-				return false;
-			}
-			@Override
-			public boolean postVisitStatement(Statement statement) { return false; }
-		}, before);
-		if (before != null) {
-			return before;			
-		}
-		return null;
-	}
+//	/**
+//	 * Get the last update of a specified field of a specified container in a specified thread (for online analysis). 
+//	 * @param containerObjId a container object 
+//	 * @param fieldName      a field name of the object 
+//	 * @param thread         a thread
+//	 * @return the corresponding field update
+//	 */
+//	public static FieldUpdate getRecentlyFieldUpdate(String containerObjId, String fieldName, Thread thread) {
+//		TracePoint before = getCurrentTracePoint(thread);
+//		if (!before.isValid()) {
+//			before.stepBackOver();
+//			if (!before.isValid()) {
+//				return null; // Cannot backward traverse any more (for example, the entry point of the root method) (without this, TimeoutException occurs at runtime).
+//			}
+//		}
+//		TracePoint tp = getFieldUpdateTracePoint(containerObjId, fieldName, before);
+//		if (tp != null && tp.getStatement() instanceof FieldUpdate) {
+//			return (FieldUpdate)tp.getStatement();				
+//		}
+//		return null;
+//	}
+//
+//	/**
+//	 * Get the last update of a specified field of a specified container before a specified execution point (for online analysis).
+//	 * @param containerObjId a container object 
+//	 * @param fieldName      a field name of the object 
+//	 * @param before         an execution point
+//	 * @return the corresponding execution point in this trace
+//	 */
+//	public static TracePoint getFieldUpdateTracePoint(final String containerObjId, final String fieldName, TracePoint before) {		
+//		before = before.duplicate();
+//		before = getInstance().traverseStatementsInTraceBackward(new IStatementVisitor() {
+//			@Override
+//			public boolean preVisitStatement(Statement statement) {
+//				if (statement instanceof FieldUpdate) {
+//					FieldUpdate fu = (FieldUpdate)statement;					
+//					if (fu.getContainerObjId().equals(containerObjId)
+//							&& fu.getFieldName().equals(fieldName)) {
+//						// Matches with both array objectID and the index
+//						return true;
+//					}
+//				}
+//				return false;
+//			}
+//			@Override
+//			public boolean postVisitStatement(Statement statement) { return false; }
+//		}, before);
+//		if (before != null) {
+//			return before;			
+//		}
+//		return null;
+//	}
+//	
+//	/**
+//	 * Get the last update of a specified element of a specified array object in a specified thread (for online analysis).
+//	 * @param arrayObjId an array object
+//	 * @param index      an index of an element
+//	 * @param thread     a thread
+//	 * @return the corresponding array update
+//	 */
+//	public static ArrayUpdate getRecentlyArrayUpdate(String arrayObjId, int index, Thread thread) {
+//		TracePoint before = getCurrentTracePoint(thread);
+//		if (!before.isValid()) {
+//			before.stepBackOver();
+//			if (!before.isValid()) {
+//				return null; // Cannot backward traverse any more (for example, the entry point of the root method) (without this, TimeoutException occurs at runtime).
+//			}
+//		}
+//		TracePoint tp = getArrayUpdateTracePoint(arrayObjId, index, before);
+//		if (tp != null && tp.getStatement() instanceof ArrayUpdate) {
+//			return (ArrayUpdate)tp.getStatement();
+//		}
+//		return null;		
+//	}
+//
+//	/**
+//	 * Get the last update of a specified element of a specified array object before a specified execution point (for online analysis).
+//	 * @param arrayObjId an array object
+//	 * @param index      an index of an element
+//	 * @param before     an execution point
+//	 * @return the corresponding execution point in this trace
+//	 */
+//	public static TracePoint getArrayUpdateTracePoint(final String arrayObjId, final int index, TracePoint before) {		
+//		before = before.duplicate();
+//		before = getInstance().traverseStatementsInTraceBackward(new IStatementVisitor() {
+//			@Override
+//			public boolean preVisitStatement(Statement statement) {
+//				if (statement instanceof ArrayUpdate) {
+//					ArrayUpdate au = (ArrayUpdate)statement;
+//					if (au.getArrayObjectId().equals(arrayObjId)
+//							&& au.getIndex() == index) {
+//						// Matches with both array objectID and the index
+//						return true;
+//					}
+//				}
+//				return false;
+//			}
+//			@Override
+//			public boolean postVisitStatement(Statement statement) { return false; }
+//		}, before);
+//		if (before != null) {
+//			return before;			
+//		}
+//		return null;
+//	}
 }

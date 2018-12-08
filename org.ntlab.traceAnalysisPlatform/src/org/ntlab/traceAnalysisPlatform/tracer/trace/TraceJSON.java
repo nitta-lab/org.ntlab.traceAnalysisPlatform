@@ -13,6 +13,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
+/**
+ * A trace specific to JSON format (specific to Javassist)
+ * @author Nitta
+ *
+ */
 public class TraceJSON extends Trace {
 	private HashMap<String, ClassInfo> classes = new HashMap<>();
 	private HashMap<String, Stack<String>> stacks = new HashMap<String, Stack<String>>();
@@ -22,8 +27,8 @@ public class TraceJSON extends Trace {
 	}
 
 	/**
-	 * 指定したJSONのトレースファイルを解読して Trace オブジェクトを生成する
-	 * @param file トレースファイル
+	 * Create a trace object from a JSON trace file.
+	 * @param file a JSON trace file
 	 */
 	public TraceJSON(BufferedReader file) {
 		try {
@@ -35,8 +40,8 @@ public class TraceJSON extends Trace {
 	}
 	
 	/**
-	 * 指定したJSONのトレースファイルを解読して Trace オブジェクトを生成する
-	 * @param traceFile トレースファイルのパス
+	 * Create a trace object from a JSON trace file.
+	 * @param traceFile the path of a JSON trace file
 	 */
 	public TraceJSON(String traceFile) {
 		BufferedReader file;
@@ -57,7 +62,7 @@ public class TraceJSON extends Trace {
 	}
 
 	private void readJSON(BufferedReader file) throws IOException {
-		// トレースファイル読み込み
+		// Read a trace file.
 		String line = null;
 		String[] type;
 		String[] classNameData;
@@ -109,26 +114,26 @@ public class TraceJSON extends Trace {
 		ThreadInstance thread = null;
 		HashMap<String, Stack<String>> stacks = new HashMap<String, Stack<String>>();
 		while ((line = file.readLine()) != null) {
-			// トレースファイルの解析
+			// Decodes the trace file.
 			if (line.startsWith("{\"type\":\"classDef\"")) {
-				// クラス定義
+				// Class definition
 				type = line.split(",\"name\":\"");
 				classNameData = type[1].split("\",\"path\":\"");
 				className = classNameData[0];
 				pathData = classNameData[1].split("\",\"loaderPath\":\"");
-				classPath = pathData[0].substring(1);								// 先頭の / を取り除く
-				loaderPath = pathData[1].substring(1, pathData[1].length() - 3);	// 先頭の / と、末尾の "}, を取り除く
+				classPath = pathData[0].substring(1);								// remove the top character '/'
+				loaderPath = pathData[1].substring(1, pathData[1].length() - 3);	// remove the top character '/' and the tail string "\"},"
 				initializeClass(className, classPath, loaderPath);
 			} else if (line.startsWith("{\"type\":\"methodCall\"")) {
-				// メソッド呼び出しの呼び出し側
+				// A method call (in a caller side)
 				type = line.split(",\"callerSideSignature\":\"");
 				signature = type[1].split("\",\"threadId\":");
 				threadId = signature[1].split(",\"lineNum\":");
-				lineNum = Integer.parseInt(threadId[1].substring(0, threadId[1].length() - 2));	// 末尾の }, を取り除く
+				lineNum = Integer.parseInt(threadId[1].substring(0, threadId[1].length() - 2));	// remove the tail string "},"
 				thread = threads.get(threadId[0]);
 				thread.preCallMethod(signature[0], lineNum);
 			} else if (line.startsWith("{\"type\":\"methodEntry\"")) {
-				// メソッド呼び出し
+				// A method entry
 				type = line.split("\"signature\":\"");
 				signature = type[1].split("\",\"receiver\":");
 				receiver = signature[1].split(",\"args\":");
@@ -143,7 +148,7 @@ public class TraceJSON extends Trace {
 					isStatic = true;
 				}
 				thread = threads.get(threadId[0]);
-				time = threadId[1].substring(0, threadId[1].length() - 2);			// 末尾の }, を取り除く
+				time = threadId[1].substring(0, threadId[1].length() - 2);			// remove the tail string "},"
 				timeStamp = Long.parseLong(time);
 				Stack<String> stack;
 				if (thread == null) {
@@ -155,12 +160,12 @@ public class TraceJSON extends Trace {
 					stack = stacks.get(threadId[0]);
 				}
 				stack.push(signature[0]);
-				// メソッド呼び出しの設定
+				// Record a method entry.
 				thread.callMethod(signature[0], null, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
-				// 引数の設定
+				// Record its arguments.
 				thread.setArgments(parseArguments(arguments));
 			} else if (line.startsWith("{\"type\":\"constructorEntry\"")) {
-				// コンストラクタ呼び出し
+				// A constructor entry.
 				type = line.split("\"signature\":\"");
 				signature = type[1].split("\",\"class\":\"");
 				receiver = signature[1].split("\",\"args\":");
@@ -171,7 +176,7 @@ public class TraceJSON extends Trace {
 				isConstractor = true;
 				isStatic = false;
 				thread = threads.get(threadId[0]);
-				time = threadId[1].substring(0, threadId[1].length() - 2);			// 末尾の }, を取り除く
+				time = threadId[1].substring(0, threadId[1].length() - 2);			// remove the tail string "},"
 				timeStamp = Long.parseLong(time);
 				Stack<String> stack;
 				if (thread == null) {
@@ -183,12 +188,12 @@ public class TraceJSON extends Trace {
 					stack = stacks.get(threadId[0]);
 				}
 				stack.push(signature[0]);
-				// メソッド呼び出しの設定
+				// Record a constructor entry.
 				thread.callMethod(signature[0], null, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
-				// 引数の設定
+				// Record its arguments.
 				thread.setArgments(parseArguments(arguments));
 			} else if (line.startsWith("{\"type\":\"methodExit\"")) {
-				// メソッドからの復帰
+				// Return from a method.
 				type = line.split(",\"shortSignature\":\"");
 				signature = type[1].split("\",\"receiver\":");
 				receiver = signature[1].split(",\"returnValue\":");
@@ -201,7 +206,7 @@ public class TraceJSON extends Trace {
 				returnClassName = returnData[0];
 				returnObjectId = returnData[1];
 				shortSignature = signature[0];
-				time = threadId[1].substring(0, threadId[1].length() - 2);		// 末尾の }, を取り除く
+				time = threadId[1].substring(0, threadId[1].length() - 2);			// remove the tail string "},"
 				timeStamp = Long.parseLong(time);
 				Stack<String> stack = stacks.get(threadId[0]);
 				if (!stack.isEmpty()) {
@@ -232,11 +237,11 @@ public class TraceJSON extends Trace {
 							|| thisClassName.contains("java.lang.Thread")) {
 						isCollectionType = true;
 					}
-					// メソッドからの復帰の設定
+					// Record a return from a method.
 					thread.returnMethod(returnVal, thisObjectId, isCollectionType, timeStamp);
 				}
 			} else if (line.startsWith("{\"type\":\"constructorExit\"")) {
-				// コンストラクタからの復帰
+				// Return from a constructor.
 				type = line.split(",\"shortSignature\":\"");
 				signature = type[1].split("\",\"returnValue\":");
 				returnValue = signature[1].split(",\"threadId\":");
@@ -244,7 +249,7 @@ public class TraceJSON extends Trace {
 				returnData = parseClassNameAndObjectId(returnValue[0]);
 				thisClassName = returnClassName = returnData[0];
 				thisObjectId = returnObjectId = returnData[1];
-				time = threadId[1].substring(0, threadId[1].length() - 2);		// 末尾の }, を取り除く
+				time = threadId[1].substring(0, threadId[1].length() - 2);		// remove the tail string "},"
 				timeStamp = Long.parseLong(time);
 				Stack<String> stack = stacks.get(threadId[0]);
 				shortSignature = signature[0];
@@ -276,11 +281,11 @@ public class TraceJSON extends Trace {
 							|| thisClassName.contains("java.lang.Thread")) {
 						isCollectionType = true;
 					}
-					// メソッドからの復帰の設定
+					// Record a return from a constructor.
 					thread.returnMethod(returnVal, thisObjectId, isCollectionType, timeStamp);
 				}
 			} else if (line.startsWith("{\"type\":\"fieldGet\"")) {
-				// フィールドアクセス
+				// A field get
 				type = line.split(",\"fieldName\":\"");
 				fieldData = type[1].split("\",\"this\":");
 				thisObj = fieldData[1].split(",\"container\":");
@@ -299,12 +304,12 @@ public class TraceJSON extends Trace {
 				valueObjectId = valueData[1];
 				thread = threads.get(threadId[0]);
 				lineNum = Integer.parseInt(lineData[0]);
-				time = lineData[1].substring(0, lineData[1].length() - 2);		// 末尾の }, を取り除く
+				time = lineData[1].substring(0, lineData[1].length() - 2);		// remove the tail string "},"
 				timeStamp = Long.parseLong(time);
-				// フィールドアクセスの設定
+				// Record a field get.
 				if (thread != null) thread.fieldAccess(fieldData[0], valueClassName, valueObjectId, containerClassName, containerObjectId, thisClassName, thisObjectId, lineNum, timeStamp);
 			} else if (line.startsWith("{\"type\":\"fieldSet\"")) {
-				// フィールド更新
+				// A field set
 				type = line.split(",\"fieldName\":\"");
 				fieldData = type[1].split("\",\"container\":");
 				containerObj = fieldData[1].split(",\"value\":");
@@ -319,12 +324,12 @@ public class TraceJSON extends Trace {
 				valueObjectId = valueData[1];
 				thread = threads.get(threadId[0]);
 				lineNum = Integer.parseInt(lineData[0]);
-				time = lineData[1].substring(0, lineData[1].length() - 2);		// 末尾の }, を取り除く
+				time = lineData[1].substring(0, lineData[1].length() - 2);		// remove the tail string "},"
 				timeStamp = Long.parseLong(time);
-				// フィールド更新の設定
+				// Record a field set.
 				if (thread != null) thread.fieldUpdate(fieldData[0], valueClassName, valueObjectId, containerClassName, containerObjectId, lineNum, timeStamp);
 			} else if (line.startsWith("{\"type\":\"arrayCreate\"")) {
-				// 配列生成
+				// An array create
 				type = line.split(",\"array\":");
 				arrayObj = type[1].split(",\"dimension\":");
 				arrayData = parseClassNameAndObjectId(arrayObj[0]);
@@ -336,11 +341,11 @@ public class TraceJSON extends Trace {
 				thread = threads.get(threadId[0]);
 				lineData = threadId[1].split(",\"time\":");
 				lineNum = Integer.parseInt(lineData[0]);
-				time = lineData[1].substring(0, lineData[1].length() - 2);		// 末尾の }, を取り除く
+				time = lineData[1].substring(0, lineData[1].length() - 2);		// remove the tail string "},"
 				timeStamp = Long.parseLong(time);
 				if (thread != null) thread.arrayCreate(arrayClassName, arrayObjectId, dimension, lineNum, timeStamp);
 			} else if (line.startsWith("{\"type\":\"arraySet\"")) {
-				// 配列要素への代入
+				// A set to an array element
 				type = line.split(",\"array\":");
 				arrayObj = type[1].split(",\"index\":");
 				arrayData = parseClassNameAndObjectId(arrayObj[0]);
@@ -354,11 +359,11 @@ public class TraceJSON extends Trace {
 				valueObjectId = valueData[1];
 				threadId = valueObj[1].split(",\"time\":");
 				thread = threads.get(threadId[0]);
-				time = threadId[1].substring(0, threadId[1].length() - 2);		// 末尾の }, を取り除く					
+				time = threadId[1].substring(0, threadId[1].length() - 2);		// remove the tail string "},"
 				timeStamp = Long.parseLong(time);
 				if (thread != null) thread.arraySet(arrayClassName, arrayObjectId, index, valueClassName, valueObjectId, 0, timeStamp);
 			} else if (line.startsWith("{\"type\":\"arrayGet\"")) {
-				// 配列要素の参照
+				// A get from an array element
 				type = line.split(",\"array\":");
 				arrayObj = type[1].split(",\"index\":");
 				arrayData = parseClassNameAndObjectId(arrayObj[0]);
@@ -372,11 +377,11 @@ public class TraceJSON extends Trace {
 				valueObjectId = valueData[1];
 				threadId = valueObj[1].split(",\"time\":");
 				thread = threads.get(threadId[0]);
-				time = threadId[1].substring(0, threadId[1].length() - 2);		// 末尾の }, を取り除く					
+				time = threadId[1].substring(0, threadId[1].length() - 2);		// remove the tail string "},"
 				timeStamp = Long.parseLong(time);
 				if (thread != null) thread.arrayGet(arrayClassName, arrayObjectId, index, valueClassName, valueObjectId, 0, timeStamp);
 			} else if (line.startsWith("{\"type\":\"blockEntry\"")) {
-				// ブロックの開始
+				// An entry of a basic block
 				type = line.split(",\"methodSignature\":\"");
 				signature = type[1].split("\",\"blockId\":");
 				blockIdData = signature[1].split(",\"incomings\":");
@@ -387,7 +392,7 @@ public class TraceJSON extends Trace {
 				thread = threads.get(threadId[0]);
 				lineData = threadId[1].split(",\"time\":");
 				lineNum = Integer.parseInt(lineData[0]);
-				time = lineData[1].substring(0, lineData[1].length() - 2);		// 末尾の }, を取り除く
+				time = lineData[1].substring(0, lineData[1].length() - 2);		// remove the tail string "},"
 				timeStamp = Long.parseLong(time);
 				if (thread != null) thread.blockEnter(blockId, incomings, lineNum, timeStamp);
 			}
@@ -395,23 +400,23 @@ public class TraceJSON extends Trace {
 	}
 
 	/**
-	 * クラス名とオブジェクトIDを表すJSONオブジェクトを解読する
-	 * @param classNameAndObjectIdJSON トレースファイル内のJSONオブジェクト
+	 * Parse a JSON object containing a class name and an object ID.
+	 * @param classNameAndObjectIdJSON a JSON object in this trace
 	 * @return
 	 */
 	protected String[] parseClassNameAndObjectId(String classNameAndObjectIdJSON) {
-		// 先頭の {"class":" の10文字と末尾の } を取り除いて分離
+		// Remove the top string "{\"class\":\"" with ten chanacters and the tail character "}".
 		return classNameAndObjectIdJSON.substring(10, classNameAndObjectIdJSON.length() - 1).split("\",\"id\":");
 	}
 	
 	/**
-	 * 引数を表すJSON配列を解読する
-	 * @param arguments
+	 * Parse a JSON array containing arguments
+	 * @param a JSON array in this trace
 	 * @return
 	 */
 	protected ArrayList<ObjectReference> parseArguments(String[] arguments) {
 		String[] argData;
-		argData = arguments[0].substring(1, arguments[0].length() - 1).split(",");		// 先頭の [ と末尾の ] を取り除く
+		argData = arguments[0].substring(1, arguments[0].length() - 1).split(",");		// Remove the top '[' and the tail ']'.
 		ArrayList<ObjectReference> argumentsData = new ArrayList<ObjectReference>();
 		for (int k = 0; k < argData.length - 1; k += 2) {
 			argumentsData.add(new ObjectReference(argData[k+1].substring(5, argData[k+1].length() - 1), argData[k].substring(10, argData[k].length() - 1)));
@@ -468,8 +473,8 @@ public class TraceJSON extends Trace {
 	}
 	
 	/**
-	 * 実行された全ブロックを取得する
-	 * @return 全ブロック(メソッド名:ブロックID)
+	 * Get all executions of basic blocks in this trace.
+	 * @return All basic blocks (method signature:block ID)
 	 */
 	public HashSet<String> getAllBlocks() {
 		final HashSet<String> blocks = new HashSet<String>();
@@ -504,10 +509,10 @@ public class TraceJSON extends Trace {
 	}
 	
 	/**
-	 * マーク内で実行が開始されたブロックを取得する
-	 * @param markStart マークの開始時刻
-	 * @param markEnd マークの終了時刻
-	 * @return 該当するブロック(メソッド名:ブロックID)
+	 * Get all executions of basic blocks that start within a specified term.
+	 * @param markStart the start time of a term
+	 * @param markEnd the end time of the term
+	 * @return corresponding basic blocks (method signature:block ID)
 	 */
 	public HashSet<String> getMarkedBlocks(final long markStart, final long markEnd) {
 		final HashSet<String> blocks = new HashSet<String>();
@@ -547,8 +552,8 @@ public class TraceJSON extends Trace {
 	}
 	
 	/**
-	 * 実行された全フローを取得する
-	 * @return 全フロー(メソッド名:フロー元ブロックID:フロー先ブロックID)
+	 * Get all flows between basic blocks.
+	 * @return all flows between basic blocks (method signature:the source basic block ID:the destination basic block ID)
 	 */
 	public HashSet<String> getAllFlows() {
 		final HashSet<String> flows = new HashSet<String>();
@@ -590,10 +595,10 @@ public class TraceJSON extends Trace {
 	}
 	
 	/**
-	 * マーク内で実行されたフローを取得する
-	 * @param markStart マークの開始時刻
-	 * @param markEnd マークの終了時刻
-	 * @return 該当するフロー(メソッド名:フロー元ブロックID:フロー先ブロックID)
+	 * Get all flows between basic blocks that start within a specified term.
+	 * @param markStart the start time of a term
+	 * @param markEnd the end time of the term
+	 * @return corresponding flows between basic blocks (method signature:the source basic block ID:the destination basic block ID)
 	 */
 	public HashSet<String> getMarkedFlows(final long markStart, final long markEnd) {
 		final HashSet<String> flows = new HashSet<String>();
@@ -611,7 +616,7 @@ public class TraceJSON extends Trace {
 				}
 				@Override
 				public boolean preVisitMethodExecution(MethodExecution methodExecution) {
-					if (methodExecution.getExitTime() < markStart) return true;		// 探索終了
+					if (methodExecution.getExitTime() < markStart) return true;		// Terminate normally
 					if (methodExecution.getEntryTime() > markEnd) return false;
 					int prevBlockId = -1;
 					for (Statement s: methodExecution.getStatements()) {
@@ -656,9 +661,9 @@ public class TraceJSON extends Trace {
 	}
 	
 	/**
-	 * 指定したスレッド上で現在実行中のメソッド実行を取得する
-	 * @param thread 対象スレッド
-	 * @return thread 上で現在実行中のメソッド実行
+	 * Get the current method execution in a specified thread (for online analysis).
+	 * @param thread a thread in this trace
+	 * @return thread the current method in the thread
 	 */
 	public static MethodExecution getCurrentMethodExecution(Thread thread) {
 		ThreadInstance t = getInstance().threads.get(String.valueOf(thread.getId()));
@@ -666,9 +671,9 @@ public class TraceJSON extends Trace {
 	}
 	
 	/**
-	 * 指定したスレッド上で現在実行中のトレースポイントを取得する
-	 * @param thread 対象スレッド
-	 * @return thread 上で現在実行中の実行文のトレースポイント
+	 * Get the current execution point in a specified thread (for online analysis).
+	 * @param thread a thread in this trace
+	 * @return thread the current execution point in the thread
 	 */
 	public static TracePoint getCurrentTracePoint(Thread thread) {
 		ThreadInstance t = getInstance().threads.get(String.valueOf(thread.getId()));
@@ -676,18 +681,18 @@ public class TraceJSON extends Trace {
 	}
 
 	/**
-	 * 引数で渡したコンテナが持つフィールドの最終更新に対応するFieldUpdateを返す
-	 * @param containerObjId
-	 * @param fieldName
-	 * @param thread
-	 * @return
+	 * Get the last update of a specified field of a specified container in a specified thread (for online analysis). 
+	 * @param containerObjId a container object 
+	 * @param fieldName      a field name of the object 
+	 * @param thread         a thread
+	 * @return the corresponding field update
 	 */
 	public static FieldUpdate getRecentlyFieldUpdate(String containerObjId, String fieldName, Thread thread) {
 		TracePoint before = getCurrentTracePoint(thread);
 		if (!before.isValid()) {
 			before.stepBackOver();
 			if (!before.isValid()) {
-				return null; // 逆方向探索でそれ以上辿れなかった場合(rootメソッド実行の1行目など)　これがないと実行時にTimeoutExceptionで落ちる
+				return null; // Cannot backward traverse any more (for example, the entry point of the root method) (without this, TimeoutException occurs at runtime).
 			}
 		}
 		TracePoint tp = getFieldUpdateTracePoint(containerObjId, fieldName, before);
@@ -698,12 +703,11 @@ public class TraceJSON extends Trace {
 	}
 
 	/**
-	 * 引数で指定したコンテナの持つ特定のフィールドが最後に更新されたstatementを逆方向に探索して、<br>
-	 * 見つかったstatementに対応するTracePointを返す
-	 * @param containerObjId
-	 * @param fieldName
-	 * @param before
-	 * @return
+	 * Get the last update of a specified field of a specified container before a specified execution point (for online analysis).
+	 * @param containerObjId a container object 
+	 * @param fieldName      a field name of the object 
+	 * @param before         an execution point
+	 * @return the corresponding execution point in this trace
 	 */
 	public static TracePoint getFieldUpdateTracePoint(final String containerObjId, final String fieldName, TracePoint before) {		
 		before = before.duplicate();
@@ -714,7 +718,7 @@ public class TraceJSON extends Trace {
 					FieldUpdate fu = (FieldUpdate)statement;					
 					if (fu.getContainerObjId().equals(containerObjId)
 							&& fu.getFieldName().equals(fieldName)) {
-						// コンテナオブジェクトIDとフィールド名が共に一致した場合
+						// Matches with both array objectID and the index
 						return true;
 					}
 				}
@@ -730,18 +734,18 @@ public class TraceJSON extends Trace {
 	}
 	
 	/**
-	 * 引数で渡した配列の指定インデックスの最終更新に対応するArrayUpdateを返す
-	 * @param arrayObjId
-	 * @param index
-	 * @param thread
-	 * @return
+	 * Get the last update of a specified element of a specified array object in a specified thread (for online analysis).
+	 * @param arrayObjId an array object
+	 * @param index      an index of an element
+	 * @param thread     a thread
+	 * @return the corresponding array update
 	 */
 	public static ArrayUpdate getRecentlyArrayUpdate(String arrayObjId, int index, Thread thread) {
 		TracePoint before = getCurrentTracePoint(thread);
 		if (!before.isValid()) {
 			before.stepBackOver();
 			if (!before.isValid()) {
-				return null; // 逆方向探索でそれ以上辿れなかった場合(rootメソッド実行の1行目など)　これがないと実行時にTimeoutExceptionで落ちる
+				return null; // Cannot backward traverse any more (for example, the entry point of the root method) (without this, TimeoutException occurs at runtime).
 			}
 		}
 		TracePoint tp = getArrayUpdateTracePoint(arrayObjId, index, before);
@@ -752,12 +756,11 @@ public class TraceJSON extends Trace {
 	}
 
 	/**
-	 * 引数で指定した配列で、かつ指定したインデックスが最後に更新されたstatementを逆方向に探索して、<br>
-	 * 見つかったstatementに対応するTracePointを返す
-	 * @param arrayObjId
-	 * @param index
-	 * @param before
-	 * @return
+	 * Get the last update of a specified element of a specified array object before a specified execution point (for online analysis).
+	 * @param arrayObjId an array object
+	 * @param index      an index of an element
+	 * @param before     an execution point
+	 * @return the corresponding execution point in this trace
 	 */
 	public static TracePoint getArrayUpdateTracePoint(final String arrayObjId, final int index, TracePoint before) {		
 		before = before.duplicate();
@@ -768,7 +771,7 @@ public class TraceJSON extends Trace {
 					ArrayUpdate au = (ArrayUpdate)statement;
 					if (au.getArrayObjectId().equals(arrayObjId)
 							&& au.getIndex() == index) {
-						// 配列IDとインデックスが共に一致した場合
+						// Matches with both array objectID and the index
 						return true;
 					}
 				}

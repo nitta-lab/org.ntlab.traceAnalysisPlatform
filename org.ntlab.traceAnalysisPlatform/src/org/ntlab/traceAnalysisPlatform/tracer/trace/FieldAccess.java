@@ -1,5 +1,10 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
+/**
+ * An execution of a field get statement in a trace
+ * @author Nitta
+ *
+ */
 public class FieldAccess extends Statement {
 	private String fieldName;
 	private String containerClassName;

@@ -1,8 +1,8 @@
 package org.ntlab.traceAnalysisPlatform.tracer;
 
 /**
- * 配列へのアクセス情報を出力するためのクラス
- * @author 新田直也
+ * Library to output runtime information of array accesses (to a JSON trace file)
+ * @author Nitta
  *
  */
 public class JSONArrayAdvisor {

@@ -1,5 +1,10 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
+/**
+ * Information of a class loaded in a trace
+ * @author Nitta
+ *
+ */
 public class ClassInfo {
 	private String name;
 	private String path;

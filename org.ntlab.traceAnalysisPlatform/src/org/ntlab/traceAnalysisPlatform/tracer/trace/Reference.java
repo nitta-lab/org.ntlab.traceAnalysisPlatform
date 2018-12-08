@@ -1,13 +1,18 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
+/**
+ * An object link within a trace
+ * @author Nitta
+ *
+ */
 public class Reference {
 	private String id;
-	private ObjectReference srcObj;			// 参照元オブジェクト
-	private ObjectReference dstObj;			// 参照先オブジェクト
-	private boolean bCreation = false;		// 参照元オブジェクトが参照先オブジェクトを生成したか?
-	private boolean bArray = false;			// 参照元オブジェクトが配列で参照先オブジェクトを要素として保持しているか?
-	private boolean bCollection = false;	// 参照元オブジェクトがコレクションで参照先オブジェクトを要素として保持しているか?
-	private boolean bFinalLocal = false;	// 参照元オブジェクトが無名または内部クラスのとき参照先オブジェクトを外側クラスの final local 変数として参照しているか?
+	private ObjectReference srcObj;			// the referring object
+	private ObjectReference dstObj;			// the referred object
+	private boolean bCreation = false;		// whether the referred object was created by the referring object?
+	private boolean bArray = false;			// whether the referring object is an array and the referred object is its element?
+	private boolean bCollection = false;	// whether the referring object is a correction and the referred object is its element?
+	private boolean bFinalLocal = false;	// whether the referring object is an instance of an inner or anonymous class and the referred object is referred to by a final local variable of its enclosing object?
 
 	public Reference(String srcObjectId, String dstObjectId, String srcClassName,
 			String dstClassName) {

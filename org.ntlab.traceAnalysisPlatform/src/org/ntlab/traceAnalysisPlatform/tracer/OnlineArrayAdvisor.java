@@ -1,7 +1,7 @@
 package org.ntlab.traceAnalysisPlatform.tracer;
 
 /**
- * 配列へのアクセス情報を出力するためのクラス (オンライン解析用)
+ * Library to output runtime information of array accesses (for online analysis)
  *
  */
 public class OnlineArrayAdvisor {

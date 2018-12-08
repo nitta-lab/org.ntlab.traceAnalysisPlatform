@@ -4,7 +4,7 @@ import java.io.PrintStream;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
- * トレース出力用ユーティリティ
+ * A thread to output a trace 
  * 
  * @author Nitta
  *

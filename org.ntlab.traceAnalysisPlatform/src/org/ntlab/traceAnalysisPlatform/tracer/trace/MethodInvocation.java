@@ -1,5 +1,10 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
+/**
+ * An invocation of a method in a trace
+ * @author Nitta
+ *
+ */
 public class MethodInvocation extends Statement {
 	private MethodExecution calledMethodExecution = null;
 	protected String thisClassName;

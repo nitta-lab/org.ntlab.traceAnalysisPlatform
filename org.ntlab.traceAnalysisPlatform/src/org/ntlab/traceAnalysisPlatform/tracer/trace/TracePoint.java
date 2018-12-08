@@ -2,6 +2,11 @@ package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
 import java.util.ArrayList;
 
+/**
+ * An execution point in a trace
+ * @author Nitta
+ *
+ */
 public class TracePoint {
 	private MethodExecution methodExecution;
 	private int order = 0;

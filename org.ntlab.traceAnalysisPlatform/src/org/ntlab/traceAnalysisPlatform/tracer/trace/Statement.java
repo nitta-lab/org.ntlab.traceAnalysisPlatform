@@ -1,5 +1,10 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
 
+/**
+ * An execution of a statement in a trace
+ * @author Nitta
+ *
+ */
 public class Statement {
 	protected int lineNo;
 	protected String threadNo;

@@ -5,6 +5,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 
+/**
+ * A thread in a trace
+ * @author Nitta
+ *
+ */
 public class ThreadInstance {
 	private ArrayList<MethodExecution> roots = new ArrayList<MethodExecution>();
 	private MethodExecution curMethodExecution = null;
@@ -67,7 +72,7 @@ public class ThreadInstance {
 		}
 		curMethodExecution.setCollectionType(isCollectionType);
 		curMethodExecution = curMethodExecution.getParent();
-		curMethodInvocation =  null;		// ”O‚Ì‚½‚ß
+		curMethodInvocation =  null;		// just in case
 	}
 
 	public void returnMethod(ObjectReference returnValue, String thisObjId, boolean isCollectionType, long exitTime) {
@@ -131,6 +136,10 @@ public class ThreadInstance {
 		if (curMethodExecution != null) curMethodExecution.addStatement(blockEnter);
 	}
 	
+	/**
+	 * Traverse backward all method executions in this thread
+	 * @param visitor   a method visitor
+	 */
 	public void traverseMethodExecutionsBackward(IMethodExecutionVisitor visitor) {
 		visitor.preVisitThread(this);
 		for (int i = 0; i < roots.size(); i++) {
@@ -140,6 +149,12 @@ public class ThreadInstance {
 		visitor.postVisitThread(this);				
 	}
 
+	/**
+	 * Traverse forward all method executions in this thread (within a marked term)
+	 * @param visitor   a method visitor
+	 * @param markStart the start time of a term to traverse
+	 * @param markEnd   the end time of a term to traverse
+	 */
 	public void traverseMarkedMethodExecutions(IMethodExecutionVisitor visitor, long markStart, long markEnd) {
 		visitor.preVisitThread(this);
 		for (int i = 0; i < roots.size(); i++) {

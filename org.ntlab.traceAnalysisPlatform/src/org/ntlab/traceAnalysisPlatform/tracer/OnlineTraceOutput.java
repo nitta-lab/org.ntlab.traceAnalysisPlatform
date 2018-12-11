@@ -1,6 +1,7 @@
 package org.ntlab.traceAnalysisPlatform.tracer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Stack;
 
 import org.ntlab.traceAnalysisPlatform.tracer.trace.ObjectReference;
@@ -13,10 +14,11 @@ import org.ntlab.traceAnalysisPlatform.tracer.trace.TraceJSON;
  */
 public class OnlineTraceOutput {
 	private static ThreadInstance thread = null;
+	private static HashMap<String, Stack<String>> stacks = new HashMap<String, Stack<String>>();
 
 	public static synchronized void onlineTraceClassDefinition(String className, String classPath, String loaderPath) {
 		// remove the head character '/' of the classPath and the loaderPath
-		TraceJSON.initializeClass(className, classPath.substring(1), loaderPath.substring(1));
+		TraceJSON.getInstance().initializeClass(className, classPath.substring(1), loaderPath.substring(1));
 	}
 
 	public static synchronized void onlineTracePreCallMethod(String signature, String threadId, String lineNum) {
@@ -34,11 +36,11 @@ public class OnlineTraceOutput {
 		Stack<String> stack;
 		if (thread == null) {
 			thread = new ThreadInstance(threadId);
-			TraceJSON.getThreads().put(threadId, thread);
+			TraceJSON.getInstance().getAllThreads().put(threadId, thread);
 			stack = new Stack<String>();
-			TraceJSON.getStacks().put(threadId, stack);
+			stacks.put(threadId, stack);
 		} else {
-			stack = TraceJSON.getStacks().get(threadId);
+			stack = stacks.get(threadId);
 		}
 		stack.push(signature);
 		// Specify a method call
@@ -60,11 +62,11 @@ public class OnlineTraceOutput {
 		Stack<String> stack;
 		if (thread == null) {
 			thread = new ThreadInstance(threadId);
-			TraceJSON.getThreads().put(threadId, thread);
+			TraceJSON.getInstance().getAllThreads().put(threadId, thread);
 			stack = new Stack<String>();
-			TraceJSON.getStacks().put(threadId, stack);
+			stacks.put(threadId, stack);
 		} else {
-			stack = TraceJSON.getStacks().get(threadId);
+			stack = stacks.get(threadId);
 		}
 		stack.push(signature);
 		// Specify a method call
@@ -80,7 +82,7 @@ public class OnlineTraceOutput {
 
 	public static synchronized void onlineTraceMethodExit(String shortSignature, String thisClassName, String thisObjectId,
 			String returnClassName, String returnObjectId, String threadId, long timeStamp) {
-		Stack<String> stack = TraceJSON.getStacks().get(threadId);
+		Stack<String> stack = stacks.get(threadId);
 		if (!stack.isEmpty()) {
 			String line2 = stack.peek();
 			if (line2.endsWith(shortSignature)) {
@@ -114,7 +116,7 @@ public class OnlineTraceOutput {
 			String threadId, long timeStamp) {
 		String thisClassName = returnClassName;
 		String thisObjectId = returnObjectId;
-		Stack<String> stack = TraceJSON.getStacks().get(threadId);
+		Stack<String> stack = stacks.get(threadId);
 		if (!stack.isEmpty()) {
 			String line2 = stack.peek();
 			if (line2.endsWith(shortSignature)) {

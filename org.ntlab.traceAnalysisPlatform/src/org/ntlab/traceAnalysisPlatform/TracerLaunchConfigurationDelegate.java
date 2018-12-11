@@ -66,7 +66,6 @@ public class TracerLaunchConfigurationDelegate extends org.eclipse.jdt.launching
 			// Classpath
 			String[] configClasspath = getClasspath(configuration);
 			String[] classpath;
-//			String bundlePath = Activator.getDefault().getBundle().getLocation();
 			try {
 				String bundlePath = FileLocator.resolve(Activator.getDefault().getBundle().getEntry("/")).getPath();
 				String tracerClassPath = FileLocator.resolve(this.getClass().getClassLoader().getResource(Tracer.TRACER_CLASS_PATH)).getPath();
@@ -75,15 +74,15 @@ public class TracerLaunchConfigurationDelegate extends org.eclipse.jdt.launching
 				List<String> additionalClasspathList = new ArrayList<>();
 				for (IAdditionalLaunchConfiguration config : loader.getAdditionalLaunchConfigurations()) {
 					for (String additionalClasspath : config.getAdditionalClasspaths()) {
-						additionalClasspathList.add(getPath(additionalClasspath));
+						additionalClasspathList.add(PathUtility.URIPathToPath(additionalClasspath));
 					}
 				}
 				String[] additionalClasspaths = additionalClasspathList.toArray(new String[additionalClasspathList.size()]);
 				
 				classpath = new String[configClasspath.length + 2 + additionalClasspaths.length];
 				System.arraycopy(configClasspath, 0, classpath, 0, configClasspath.length);
-				classpath[configClasspath.length]		= getPath(tracerClassPath.substring(0, tracerClassPath.length() - Tracer.TRACER_CLASS_PATH.length()));
-				classpath[configClasspath.length + 1]	= getPath(bundlePath + Tracer.JAVASSIST_LIBRARY);
+				classpath[configClasspath.length]		= PathUtility.URIPathToPath(tracerClassPath.substring(0, tracerClassPath.length() - Tracer.TRACER_CLASS_PATH.length()));
+				classpath[configClasspath.length + 1]	= PathUtility.URIPathToPath(bundlePath + Tracer.JAVASSIST_LIBRARY);
 				System.arraycopy(additionalClasspaths, 0, classpath, configClasspath.length + 2, additionalClasspaths.length);
 
 				for (int i = 0; i < classpath.length; i++) {
@@ -144,14 +143,5 @@ public class TracerLaunchConfigurationDelegate extends org.eclipse.jdt.launching
 		IVMInstall vm = verifyVMInstall(configuration);
 		IVMRunner runner = vm.getVMRunner(mode);
 		return runner;
-	}
-
-	private String getPath(String location) {
-		System.out.println(location);
-		if (location.indexOf('/') >= 0) {
-			return location.substring(location.indexOf('/') + 1).split("!/")[0];		
-		} else {
-			return location.split("!/")[0];
-		}
 	}
 }

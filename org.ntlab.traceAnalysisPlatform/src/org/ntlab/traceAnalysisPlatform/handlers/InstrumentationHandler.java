@@ -6,10 +6,9 @@ import java.net.URI;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
-import org.eclipse.core.internal.localstore.FileSystemResourceManager;
-import org.eclipse.core.internal.resources.Workspace;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -24,6 +23,7 @@ import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.ntlab.traceAnalysisPlatform.Activator;
+import org.ntlab.traceAnalysisPlatform.PathUtility;
 import org.ntlab.traceAnalysisPlatform.tracer.ITraceGenerator;
 import org.ntlab.traceAnalysisPlatform.tracer.OutputStatementsGenerator;
 import org.ntlab.traceAnalysisPlatform.tracer.Tracer;
@@ -37,7 +37,6 @@ import javassist.NotFoundException;
  * @author Nitta
  *
  */
-@SuppressWarnings("restriction")
 public abstract class InstrumentationHandler extends AbstractHandler {
 
 	@Override
@@ -58,10 +57,8 @@ public abstract class InstrumentationHandler extends AbstractHandler {
 					try {
 						String bundlePath = FileLocator.resolve(Activator.getDefault().getBundle().getEntry("/")).getPath();
 						String tracerClassPath = FileLocator.resolve(this.getClass().getClassLoader().getResource(Tracer.TRACER_CLASS_PATH)).getPath();
-						System.out.println(bundlePath);
-						System.out.println(tracerClassPath);
-						cp.appendClassPath(getPath(tracerClassPath.substring(0, tracerClassPath.length() - Tracer.TRACER_CLASS_PATH.length())));
-						cp.appendClassPath(getPath(bundlePath + Tracer.JAVASSIST_LIBRARY));
+						cp.appendClassPath(PathUtility.URIPathToPath(tracerClassPath.substring(0, tracerClassPath.length() - Tracer.TRACER_CLASS_PATH.length())));
+						cp.appendClassPath(PathUtility.URIPathToPath(bundlePath + Tracer.JAVASSIST_LIBRARY));
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -94,8 +91,7 @@ public abstract class InstrumentationHandler extends AbstractHandler {
 	private String addProjectClassPathsToClassPool(IJavaProject javaProject, ClassPool cp)
 			throws JavaModelException, NotFoundException {
 		String outputClassPath = null;
-		Workspace workspace = (Workspace) javaProject.getProject().getWorkspace();
-		FileSystemResourceManager fsm = workspace.getFileSystemManager();
+		IWorkspace workspace = javaProject.getProject().getWorkspace();
 		for (IClasspathEntry entry : javaProject.getResolvedClasspath(true)) {
 			switch (entry.getEntryKind()) {
 			case IClasspathEntry.CPE_SOURCE:
@@ -103,9 +99,8 @@ public abstract class InstrumentationHandler extends AbstractHandler {
 				IPath outputLocation = entry.getOutputLocation();
 				if (outputLocation != null) {
 					// If the output folder is specified individually.
-					URI path = fsm.locationURIFor(workspace.getRoot().getFolder(outputLocation));
-					outputClassPath = path.getPath().substring(1);
-					System.out.println(outputClassPath);
+					URI path = PathUtility.workspaceRelativePathToAbsoluteURI(outputLocation, workspace);
+					outputClassPath = PathUtility.URIPathToPath(path.getPath());
 					cp.appendClassPath(outputClassPath);
 				}
 				break;
@@ -113,15 +108,13 @@ public abstract class InstrumentationHandler extends AbstractHandler {
 				// A library referred to by the target Java project.
 				if (entry.getPath().getDevice() != null) {
 					// Maybe JRE system library, the class path of the library should not be appended more than once.
-					System.out.println(entry.getPath().toString());
 					cp.appendClassPath(entry.getPath().toString());								
 				} else {
-					URI path = fsm.locationURIFor(workspace.getRoot().getFolder(entry.getPath()));
-					System.out.println(path.getPath());
 					try {
-						cp.appendClassPath(path.getPath().substring(1));
+						URI path = PathUtility.workspaceRelativePathToAbsoluteURI(entry.getPath(), workspace);
+						cp.appendClassPath(PathUtility.URIPathToPath(path.getPath()));
 					} catch (NotFoundException e) {
-						e.printStackTrace();
+						// Sometimes the path of a library cannot be found for some reason.
 					}
 				}
 				break;
@@ -137,21 +130,12 @@ public abstract class InstrumentationHandler extends AbstractHandler {
 		}
 		if (outputClassPath == null) {
 			// Specify the output folder of the target Java project.
-			URI path = fsm.locationURIFor(workspace.getRoot().getFolder(javaProject.getOutputLocation()));
-			outputClassPath = path.getPath().substring(1);
-			System.out.println(outputClassPath);
+			URI path = PathUtility.workspaceRelativePathToAbsoluteURI(javaProject.getOutputLocation(), workspace);
+			outputClassPath = PathUtility.URIPathToPath(path.getPath());
 			cp.appendClassPath(outputClassPath);
 		}
 		return outputClassPath;
 	}
 	
 	public abstract ITraceGenerator getGenerator();
-
-	private String getPath(String location) {
-		if (location.indexOf('/') >= 0) {
-			return location.substring(location.indexOf('/') + 1).split("!/")[0];
-		} else {
-			return location.split("!/")[0];
-		}
-	}
 }

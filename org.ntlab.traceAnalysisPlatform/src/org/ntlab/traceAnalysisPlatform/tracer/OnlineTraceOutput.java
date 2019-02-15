@@ -15,6 +15,10 @@ import org.ntlab.traceAnalysisPlatform.tracer.trace.TraceJSON;
 public class OnlineTraceOutput {
 	private static ThreadInstance thread = null;
 	private static HashMap<String, Stack<String>> stacks = new HashMap<String, Stack<String>>();
+	
+	static {
+		startOnlineAnalysisThread();		
+	}
 
 	public static synchronized void onlineTraceClassDefinition(String className, String classPath, String loaderPath) {
 		// remove the head character '/' of the classPath and the loaderPath
@@ -197,5 +201,18 @@ public class OnlineTraceOutput {
 			thread.blockEnter(Integer.parseInt(blockId), Integer.parseInt(incomings), Integer.parseInt(lineNum),
 					timeStamp);
 		}
+	}
+	
+	private static void startOnlineAnalysisThread() {
+		Thread analysisThread = new Thread("OnlineAnalysisThread") {
+			public void run() {
+				try {
+					sleep(100);
+				} catch (InterruptedException e) {
+				}
+				new ThreadInterruptor();		// this thread will be suspended by loading ThreadInterruptor class
+			}
+		};
+		analysisThread.start();
 	}
 }

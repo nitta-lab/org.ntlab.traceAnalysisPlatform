@@ -12,14 +12,19 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
+import org.eclipse.debug.core.model.IDebugTarget;
+import org.eclipse.jdt.internal.debug.core.model.JDIDebugTarget;
 import org.eclipse.jdt.internal.launching.LaunchingMessages;
 import org.eclipse.jdt.launching.ExecutionArguments;
 import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.IVMRunner;
 import org.eclipse.jdt.launching.VMRunnerConfiguration;
+import org.ntlab.traceAnalysisPlatform.tracer.ThreadInterruptor;
 import org.ntlab.traceAnalysisPlatform.tracer.Tracer;
 
 import com.ibm.icu.text.MessageFormat;
+import com.sun.jdi.VirtualMachine;
+import com.sun.jdi.request.ClassPrepareRequest;
 
 /**
  * Run/Debug as Java Application with Tracer commands
@@ -129,12 +134,27 @@ public class TracerLaunchConfigurationDelegate extends org.eclipse.jdt.launching
 			// Launch the configuration - 1 unit of work
 			runner.run(runConfig, launch, monitor);
 			
+			requestToSuspendOnlineAnalysisThread(launch);
+			
 			// check for cancellation
 			if (monitor.isCanceled()) {
 				return;
 			}	
 		} finally {
 			monitor.done();
+		}
+	}
+
+	private void requestToSuspendOnlineAnalysisThread(ILaunch launch) {
+		IDebugTarget debugTarget = launch.getDebugTarget();
+		if (debugTarget != null) {
+			VirtualMachine vm = ((JDIDebugTarget)debugTarget).getVM();
+			if (vm != null) {
+				ClassPrepareRequest cpr = vm.eventRequestManager().createClassPrepareRequest();
+				cpr.addClassFilter(ThreadInterruptor.class.getName());
+				cpr.setSuspendPolicy(ClassPrepareRequest.SUSPEND_EVENT_THREAD);
+				cpr.enable();
+			}
 		}
 	}
 

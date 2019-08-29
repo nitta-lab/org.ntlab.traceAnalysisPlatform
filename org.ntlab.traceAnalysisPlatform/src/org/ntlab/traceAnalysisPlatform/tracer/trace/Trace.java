@@ -9,13 +9,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Stack;
 
-/**
- * Base class for a trace
- * @author Nitta
- *
- */
 public class Trace {
-	protected static final boolean EAGER_DETECTION_OF_ARRAY_SET = false;		// Whether will an execution of an array set be guessed or not even when its occurrence is not clear? (True value may induce false positives)
+	protected static final boolean EAGER_DETECTION_OF_ARRAY_SET = false;		// 配列要素への代入の検出を多く見積もるか?(多く見積もるとFalse Positiveになる可能性がある)
 	protected static Trace theTrace = null;
 	protected HashMap<String, ThreadInstance> threads = new HashMap<String, ThreadInstance>();
 
@@ -23,8 +18,8 @@ public class Trace {
 	}
 	
 	/**
-	 * Create a trace object from a plain text trace file.
-	 * @param file a plain text trace file
+	 * 指定したPlainTextのトレースファイルを解読して Trace オブジェクトを生成する
+	 * @param file トレースファイル
 	 */
 	public Trace(BufferedReader file) {
 		try {
@@ -36,8 +31,8 @@ public class Trace {
 	}
 	
 	/**
-	 * Create a trace object from a plain text trace file.
-	 * @param traceFile the path of a plain text trace file
+	 * 指定したPlainTextのトレースファイルを解読して Trace オブジェクトを生成する
+	 * @param traceFile トレースファイルのパス
 	 */
 	public Trace(String traceFile) {
 		BufferedReader file;
@@ -51,7 +46,7 @@ public class Trace {
 	}
 
 	private void read(BufferedReader file) throws IOException {
-		// Read a trace file
+		// トレースファイル読み込み
 		String line, prevLine = null;
 		String signature;
 		String callerSideSignature;
@@ -70,9 +65,9 @@ public class Trace {
 		ThreadInstance thread = null;
 		HashMap<String, Stack<String>> stacks = new HashMap<String, Stack<String>>();
 		while ((line = file.readLine()) != null) {
-			// Decodes the trace file
+			// トレースファイルの解析
 			if (line.startsWith("Method")) {
-				// A method or constructor invocation
+				// メソッド呼び出し（コンストラクタ呼び出しも含む）
 				methodData = line.split(":");
 				int n = methodData[0].indexOf(',');
 				signature = methodData[0].substring(n + 1);
@@ -106,7 +101,7 @@ public class Trace {
 				stack.push(line);
 				thread.callMethod(signature, callerSideSignature, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
 			} else if (line.startsWith("Args")) {
-				// The arguments of the last invocation
+				// メソッド呼び出しの引数
 				argData = line.split(":");
 				threadNo = argData[argData.length - 1].split(" ")[1];
 				thread = threads.get(threadNo);
@@ -116,7 +111,7 @@ public class Trace {
 				}
 				thread.setArgments(arguments);
 			} else if (line.startsWith("Return")) {
-				// Return from a method
+				// メソッドからの復帰
 				returnData = line.split(":");
 				threadNo = returnData[returnData.length - 1].split(" ")[1];
 				Stack<String> stack = stacks.get(threadNo);
@@ -153,13 +148,13 @@ public class Trace {
 					thread.returnMethod(returnValue, thisObjectId, isCollectionType);
 				}
 			} else if (line.startsWith("get")) {
-				// Field access
+				// フィールドアクセス
 				accessData = line.split(":");
 				threadNo = accessData[8].split(" ")[1];
 				thread = threads.get(threadNo);
 				if (thread != null) thread.fieldAccess(accessData[5], accessData[6], accessData[3], accessData[4], accessData[1], accessData[2]);
 			} else if (line.startsWith("set")) {
-				// Field update
+				// フィールド更新
 				updateData = line.split(":");
 				threadNo = updateData[6].split(" ")[1];
 				thread = threads.get(threadNo);
@@ -170,8 +165,8 @@ public class Trace {
 	}
 	
 	/**
-	 * Get the singleton object to record an online trace.
-	 * @return
+	 * オンライン解析用シングルトンの取得
+	 * @return オンライン解析用トレース
 	 */
 	public static Trace getInstance() {
 		if (theTrace == null) {
@@ -181,18 +176,18 @@ public class Trace {
 	}
 	
 	/**
-	 * Get the thread instance by thread ID.
-	 * @param threadId thread ID
-	 * @return corresponding thread instance
+	 * スレッドIDを指定してスレッドインスタンスを取得する(オンライン解析用)
+	 * @param threadId
+	 * @return スレッドインスタンス
 	 */
 	public static ThreadInstance getThreadInstance(String threadId) {
 		return getInstance().threads.get(threadId);
 	}
 	
 	/**
-	 * Get the current method execution in a specified thread (for online analysis).
-	 * @param thread a thread
-	 * @return the current method execution in thread
+	 * 指定したスレッド上で現在実行中のメソッド実行を取得する(オンライン解析用)
+	 * @param thread 対象スレッド
+	 * @return thread 上で現在実行中のメソッド実行
 	 */
 	public static MethodExecution getCurrentMethodExecution(Thread thread) {
 		ThreadInstance t = getInstance().threads.get(String.valueOf(thread.getId()));
@@ -200,9 +195,9 @@ public class Trace {
 	}
 	
 	/**
-	 * Get the current trace point in a specified thread (for online analysis).
-	 * @param thread a thread
-	 * @return the current trace point in thread
+	 * 指定したスレッド上で現在実行中のトレースポイントを取得する(オンライン解析用)
+	 * @param thread 対象スレッド
+	 * @return thread 上で現在実行中の実行文のトレースポイント
 	 */
 	public static TracePoint getCurrentTracePoint(Thread thread) {
 		ThreadInstance t = getInstance().threads.get(String.valueOf(thread.getId()));
@@ -210,16 +205,16 @@ public class Trace {
 	}
 	
 	/**
-	 * Get all threads in this trace.
-	 * @return A map from a thread ID to the corresponding thread instance
+	 * 全スレッドを取得する
+	 * @return スレッドIDからスレッドインスタンスへのマップ
 	 */
 	public HashMap<String, ThreadInstance> getAllThreads() {
 		return threads;
 	}
 
 	/**
-	 * Get all method executions in this trace with grouping by method signature.
-	 * @return a map from each method signature to its all executions in this trace
+	 * メソッド毎に全メソッド実行を全てのスレッドから取り出す
+	 * @return メソッドシグニチャからメソッド実行のリストへのHashMap
 	 */
 	public HashMap<String, ArrayList<MethodExecution>> getAllMethodExecutions() {
 		Iterator<String> threadsIterator = threads.keySet().iterator();
@@ -256,8 +251,8 @@ public class Trace {
 	}
 	
 	/**
-	 * Get all method signatures in this trace.
-	 * @return all method signatures
+	 * 全メソッドのシグニチャを取得する
+	 * @return 全メソッドシグニチャ
 	 */
 	public HashSet<String> getAllMethodSignatures() {
 		final HashSet<String> signatures = new HashSet<String>();
@@ -286,11 +281,11 @@ public class Trace {
 		}	
 		return signatures;
 	}
-
+	
 	/**
-	 * Get all method executions in this trace whose signature starts with a given string.
-	 * @param methodSignature a string that matches a substring of a method signature
-	 * @return all corresponding method executions
+	 * メソッド名が methodSignature　に前方一致するメソッド実行を全てのスレッドから取り出す
+	 * @param methodSignature 検索文字列
+	 * @return 一致した全メソッド実行
 	 */
 	public ArrayList<MethodExecution> getMethodExecutions(final String methodSignature) {
 		Iterator<String> threadsIterator = threads.keySet().iterator();
@@ -323,9 +318,9 @@ public class Trace {
 	}
 
 	/**
-	 * Get the last execution of the method in this trace whose signature starts with a given string.
-	 * @param methodSignature a string that matches a substring of a method signature
-	 * @return the last execution of the corresponding method
+	 * methodSignature に前方一致するメソッド名を持つメソッドの最後の実行
+	 * @param methodSignature メソッド名(前方一致で検索する)
+	 * @return 該当する最後のメソッド実行
 	 */
 	public MethodExecution getLastMethodExecution(final String methodSignature) {
 		return traverseMethodEntriesInTraceBackward(new IMethodExecutionVisitor() {
@@ -344,10 +339,10 @@ public class Trace {
 	}
 
 	/**
-	 * Get the last execution of the method whose signature starts with a given string and which occurs before a given execution point in this trace.
-	 * @param methodSignature a string that matches a substring of a method signature
-	 * @param before an execution point in this trace
-	 * @return the last execution of the corresponding method before a given execution point 
+	 * methodSignature に前方一致するメソッド名を持つメソッドの before 以前の最後の実行
+	 * @param methodSignature メソッド名(前方一致で検索する)
+	 * @param before　探索開始トレースポイント(これより以前を探索)
+	 * @return　該当する最後のメソッド実行
 	 */
 	public MethodExecution getLastMethodExecution(final String methodSignature, TracePoint before) {
 		return traverseMethodEntriesInTraceBackward(new IMethodExecutionVisitor() {
@@ -366,10 +361,10 @@ public class Trace {
 	}
 	
 	/**
-	 * Get all method signatures such that some execution of the method starts within a specified term.
-	 * @param markStart the start time of a term
-	 * @param markEnd the end time of a term
-	 * @return corresponding method signatures
+	 * マーク内で実行が開始された全メソッドのシグニチャを取得する
+	 * @param markStart マークの開始時刻
+	 * @param markEnd マークの終了時刻
+	 * @return 該当するメソッドシグニチャ
 	 */
 	public HashSet<String> getMarkedMethodSignatures(final long markStart, final long markEnd) {
 		final HashSet<String> signatures = new HashSet<String>();
@@ -400,10 +395,10 @@ public class Trace {
 	}
 	
 	/**
-	 * Get all method signatures such that some execution of the method starts within a specified term with grouping by method signature.
-	 * @param markStart the start time of a term
-	 * @param markEnd the end time of a term
-	 * @return a map from each method signature to the corresponding method executions
+	 * マーク内で実行が開始された全メソッド実行をメソッド毎に取得する
+	 * @param markStart マークの開始時刻
+	 * @param markEnd マークの終了時刻
+	 * @return メソッドシグニチャから該当するメソッド実行のリストへのHashMap
 	 */
 	public HashMap<String, ArrayList<MethodExecution>> getMarkedMethodExecutions(final long markStart, final long markEnd) {
 		final HashMap<String, ArrayList<MethodExecution>>allExecutions = new HashMap<>();
@@ -439,10 +434,10 @@ public class Trace {
 	}
 	
 	/**
-	 * Get all method signatures such that some execution of the method starts outside a specified term.
-	 * @param markStart the start time of a term
-	 * @param markEnd the end time of a term
-	 * @return corresponding method signatures
+	 * マーク外で実行が開始された全メソッドのシグニチャを取得する
+	 * @param markStart マークの開始時刻
+	 * @param markEnd マークの終了時刻
+	 * @return 該当するメソッドシグニチャ
 	 */
 	public HashSet<String> getUnmarkedMethodSignatures(long markStart, long markEnd) {
 		HashSet<String> signatures = new HashSet<String>();
@@ -455,10 +450,10 @@ public class Trace {
 	}
 	
 	/**
-	 * Get all method signatures such that some execution of the method starts outside a specified term with grouping by method signature.
-	 * @param markStart the start time of a term
-	 * @param markEnd the end time of a term
-	 * @return a map from each method signature to the corresponding method executions
+	 * マーク外で実行が開始された全メソッド実行を取得する
+	 * @param markStart マークの開始時刻
+	 * @param markEnd マークの終了時刻
+	 * @return メソッドシグニチャから該当するメソッド実行のリストへのHashMap
 	 */
 	public HashMap<String, ArrayList<MethodExecution>> getUnmarkedMethodExecutions(long markStart, long markEnd) {
 		HashMap<String, ArrayList<MethodExecution>> executions = new HashMap<>();
@@ -470,20 +465,28 @@ public class Trace {
 		return executions;
 	}
 	
-	private TracePoint getLastMethodEntryInThread(ArrayList<MethodExecution> rootExecutions) {
+	
+	protected TracePoint getLastMethodEntryInThread(ArrayList<MethodExecution> rootExecutions) {
 		MethodExecution lastExecution = rootExecutions.remove(rootExecutions.size() - 1);
 		return getLastMethodEntryInThread(rootExecutions, lastExecution.getExitOutPoint());
 	}
 
-	private TracePoint getLastMethodEntryInThread(ArrayList<MethodExecution> rootExecutions, TracePoint start) {
+	protected TracePoint getLastMethodEntryInThread(ArrayList<MethodExecution> rootExecutions, TracePoint start) {
 		return getLastMethodEntryInThread(rootExecutions, start, -1L);
 	}
 	
-	private TracePoint getLastMethodEntryInThread(ArrayList<MethodExecution> rootExecutions, TracePoint start, final long before) {
+	/**
+	 * 
+	 * @param rootExecutions
+	 * @param start
+	 * @param before
+	 * @return
+	 */
+	protected TracePoint getLastMethodEntryInThread(ArrayList<MethodExecution> rootExecutions, TracePoint start, final long before) {
 		final TracePoint cp[] = new TracePoint[1];
 		cp[0] = start;
 		for (;;) {
-			if (!cp[0].isStepBackOut() && traverseMethodExecutionsInCallTreeBackward(
+			if (!cp[0].isStepBackOut() && traverseMethodExecutionsInCallTreeBackward (
 					new IMethodExecutionVisitor() {
 						@Override
 						public boolean preVisitThread(ThreadInstance thread) { return false; }
@@ -509,6 +512,50 @@ public class Trace {
 		return null;
 	}
 	
+	public boolean getLastStatementInThread(String threadId, final TracePoint[] start, final IStatementVisitor visitor) {
+		return getLastStatementInThread((ArrayList<MethodExecution>) threads.get(threadId).getRoot().clone(), start, start[0].getStatement().getTimeStamp(), visitor);
+	}
+	
+	protected boolean getLastStatementInThread(ArrayList<MethodExecution> rootExecutions, final TracePoint[] start, final long before, final IStatementVisitor visitor) {
+		final boolean[] bArrived = new boolean[] {
+			false
+		};
+		for (;;) {
+			if (start[0].isValid() && traverseStatementsInCallTreeBackward(
+					new IStatementVisitor() {
+						@Override
+						public boolean preVisitStatement(Statement statement) {
+							if (statement instanceof MethodInvocation) {
+								MethodExecution methodExecution = ((MethodInvocation) statement).getCalledMethodExecution();
+								if ((!methodExecution.isTerminated() && methodExecution.getExitTime() < before) || before == -1L) {
+									if (visitor.preVisitStatement(statement)) return true;
+									bArrived[0] = true;
+									return true;
+								}
+							} else {
+								if (statement.getTimeStamp() < before || before == -1L) {
+									if (visitor.preVisitStatement(statement)) return true;
+									bArrived[0] = true;
+									return true;
+								}
+							}
+							return visitor.preVisitStatement(statement); 
+						}
+						@Override
+						public boolean postVisitStatement(Statement statement) {
+							return visitor.postVisitStatement(statement);
+						}
+					}, start[0])) {
+				return !bArrived[0];
+			}
+			if (rootExecutions.size() == 0) break;
+			MethodExecution lastExecution = rootExecutions.remove(rootExecutions.size() - 1);
+			start[0] = lastExecution.getExitPoint();
+		}
+		start[0] = null;
+		return false;
+	}
+
 	public TracePoint getCreationTracePoint(final ObjectReference newObjectId, TracePoint before) {
 		before = before.duplicate();
 		before = traverseStatementsInTraceBackward(
@@ -533,12 +580,6 @@ public class Trace {
 		return null;
 	}
 
-	/**
-	 * Search a field set before a given execution point in the trace.
-	 * @param ref the referred object by a field and the container object to search
-	 * @param before an execution point
-	 * @return the corresponding execution point
-	 */
 	public TracePoint getFieldUpdateTracePoint(final Reference ref, TracePoint before) {
 		before = before.duplicate();
 		final String srcType = ref.getSrcClassName();
@@ -553,16 +594,16 @@ public class Trace {
 					FieldUpdate fu = (FieldUpdate)statement;
 					if (fu.getContainerObjId().equals(srcObjId) 
 							&& fu.getValueObjId().equals(dstObjId)) {
-						// Totally corresponds.
+						// オブジェクトIDが互いに一致した場合
 						return true;
 					} else if ((srcObjId == null || isNull(srcObjId)) && fu.getContainerClassName().equals(srcType)) {
 						if ((dstObjId == null || isNull(dstObjId)) && fu.getValueClassName().equals(dstType)) {
-							// In the case that object ID is not specified in ref.
+							// ref にオブジェクトIDを指定していなかった場合
 							ref.setSrcObjectId(fu.getContainerObjId());
 							ref.setDstObjectId(fu.getValueObjId());
 							return true;
 						} else if (fu.getValueObjId().equals(dstObjId)) {
-							// In the case of static field set.
+							// クラス変数への代入の場合
 							ref.setSrcObjectId(srcObjId);
 							ref.setDstClassName(dstType);
 							return true;
@@ -580,12 +621,6 @@ public class Trace {
 		return null;
 	}
 
-	/**
-	 * Search an addition of an object to a collection object before a given execution point in the trace.
-	 * @param ref the added object and the collection object to search
-	 * @param before an execution point
-	 * @return the corresponding execution point
-	 */
 	public TracePoint getCollectionAddTracePoint(final Reference ref, TracePoint before) {
 		final TracePoint[] result = new TracePoint[1];
 		if (traverseMethodEntriesInTraceBackward(new IMethodExecutionVisitor() {
@@ -640,12 +675,6 @@ public class Trace {
 		return null;
 	}
 
-	/**
-	 * Search a set of an element to an array object before a given execution point in the trace.
-	 * @param ref the new element and the array object to search
-	 * @param before an execution point
-	 * @return the corresponding execution point
-	 */
 	public TracePoint getArraySetTracePoint(final Reference ref, TracePoint before) {
 		final TracePoint start = before.duplicate();
 		before = traverseStatementsInTraceBackward(new IStatementVisitor() {
@@ -677,16 +706,20 @@ public class Trace {
 		String dstObjId = ref.getDstObjectId();
 		if (fieldAccess.getValueClassName().startsWith("[L") 
 				&& fieldAccess.getValueObjId().equals(srcObjId)) {
+			// srcId は配列
+			// メソッド実行開始から fieldAccessPoint までの間のメソッド実行中で dstId が出現したか?
 			TracePoint p = fieldAccessPoint.duplicate();
 			while (p.stepBackOver()) {
 				Statement statement = p.getStatement();
 				if (statement instanceof MethodInvocation) {
 					MethodExecution calledMethod = ((MethodInvocation)statement).getCalledMethodExecution();
 					if (calledMethod.getReturnValue().getId().equals(dstObjId)) {
+						// dstId は戻り値として出現
 						ref.setSrcClassName(fieldAccess.getValueClassName());
 						ref.setDstClassName(calledMethod.getReturnValue().getActualType());
 						return true;
 					} else if (dstObjId == null || isNull(dstObjId) && calledMethod.getReturnValue().getActualType().equals(ref.getDstClassName())) {
+						// dstClassName は戻り値の型として出現
 						ref.setSrcObjectId(fieldAccess.getValueObjId());
 						ref.setDstObjectId(calledMethod.getReturnValue().getId());
 						return true;								
@@ -695,10 +728,12 @@ public class Trace {
 				if (EAGER_DETECTION_OF_ARRAY_SET) {
 					if (statement instanceof FieldAccess) {
 						if (((FieldAccess)statement).getContainerObjId().equals(dstObjId)) {
+							// dstId はフィールドに出現
 							ref.setSrcClassName(fieldAccess.getValueClassName());
 							ref.setDstClassName(((FieldAccess)statement).getContainerClassName());
 							return true;
 						} else if (dstObjId == null || isNull(dstObjId) && ((FieldAccess)statement).getContainerClassName().equals(ref.getDstClassName())) {
+							// dstClassName はフィールドの型として出現					
 							ref.setSrcObjectId(fieldAccess.getValueObjId());
 							ref.setDstObjectId(((FieldAccess)statement).getContainerObjId());
 							return true;
@@ -709,12 +744,14 @@ public class Trace {
 			ArrayList<ObjectReference> args = fieldAccessPoint.getMethodExecution().getArguments();
 			int argindex = args.indexOf(new ObjectReference(dstObjId));
 			if (argindex != -1) {
+				// dstId は引数に出現
 				ref.setSrcClassName(fieldAccess.getValueClassName());
 				ref.setDstClassName(args.get(argindex).getActualType());
 				return true;
 			} else if (dstObjId == null || isNull(dstObjId)) {
 				for (int j = 0; j < args.size(); j++) {
 					if (args.get(j).getActualType().equals(ref.getDstClassName())) {
+						// dstClassName は引数の型に出現							
 						ref.setSrcObjectId(fieldAccess.getValueObjId());
 						ref.setDstObjectId(args.get(j).getId());
 						return true;
@@ -726,21 +763,19 @@ public class Trace {
 	}
 	
 	/**
-	 * Traverse backward all method entries in this trace. 
-	 * @param visitor a method visitor (only postVisitMethodExecution() is called back)
-	 * @return a method execution where the traverse is aborted
+	 * トレース中の全メソッド実行の開始地点を逆向きに探索する
+	 * @param visitor メソッド実行のビジター(postVisitMethodExecution()しか呼び返さないので注意)
+	 * @return 中断したメソッド実行
 	 */
 	public MethodExecution traverseMethodEntriesInTraceBackward(IMethodExecutionVisitor visitor) {
 		HashMap<String, ArrayList<MethodExecution>> threadRoots = new HashMap<String, ArrayList<MethodExecution>>();
 		HashMap<String, TracePoint> threadLastPoints = new HashMap<String, TracePoint>();
-		Iterator<String> threadsIterator = threads.keySet().iterator();
-		// Search the last executed method in each thread.
+		// 各スレッドにおいて一番最後に開始したメソッド実行を探す
 		long traceLastTime = 0;
 		String traceLastThread = null;
 		long traceLastTime2 = 0;
 		String traceLastThread2 = null;
-		for (; threadsIterator.hasNext();) {
-			String threadId = threadsIterator.next();
+		for (String threadId: threads.keySet()) {
 			ThreadInstance thread = threads.get(threadId);
 			ArrayList<MethodExecution> rootExecutions = (ArrayList<MethodExecution>)thread.getRoot().clone();
 			threadRoots.put(threadId, rootExecutions);
@@ -760,15 +795,14 @@ public class Trace {
 	}
 	
 	/**
-	 * Traverse backward all method entries before a given execution point in this trace. 
-	 * @param visitor a method visitor (only postVisitMethodExecution() is called back)
-	 * @param before an execution point in this trace
-	 * @return a method execution where the traverse is aborted
+	 * 指定した実行時点以前に実行が開始されたメソッド実行の開始時点を逆向きに探索する
+	 * @param visitor メソッド実行のビジター(postVisitMethodExecution()しか呼び返さないので注意)
+	 * @param before 探索開始時点
+	 * @return 中断したメソッド実行
 	 */
 	public MethodExecution traverseMethodEntriesInTraceBackward(IMethodExecutionVisitor visitor, TracePoint before) {
 		HashMap<String, ArrayList<MethodExecution>> threadRoots = new HashMap<String, ArrayList<MethodExecution>>();
 		HashMap<String, TracePoint> threadLastPoints = new HashMap<String, TracePoint>();
-		Iterator<String> threadsIterator = threads.keySet().iterator();
 		String traceLastThread = null;
 		long traceLastTime2 = 0;
 		String traceLastThread2 = null;
@@ -786,8 +820,7 @@ public class Trace {
 			rootExecutions.remove(rootExecutions.size() - 1);
 		}
 		before = getLastMethodEntryInThread(rootExecutions, before);
-		for (; threadsIterator.hasNext();) {
-			String threadId = threadsIterator.next();
+		for (String threadId: threads.keySet()) {
 			ThreadInstance t = threads.get(threadId);
 			if (t == thread) {
 				threadRoots.put(threadId, rootExecutions);
@@ -815,28 +848,29 @@ public class Trace {
 			final IMethodExecutionVisitor visitor, 
 			HashMap<String, ArrayList<MethodExecution>> threadRoots, HashMap<String, TracePoint> threadLastPoints, 
 			String traceLastThread, String traceLastThread2, long traceLastTime2) {
-		// Traverse backward all method executions in this trace synchronizing all threads
+		// 全スレッドの同期をとりながら逆向きにメソッド実行を探索する
 		for (;;) {
+			// 探索対象のスレッド内の逆向き探索
 			TracePoint threadLastTp = threadLastPoints.get(traceLastThread);
 			MethodExecution threadLastExecution = threadLastTp.getMethodExecution();
 			do {
 				threadLastTp.stepBackOver();
+				// そのスレッドの次のメソッド実行開始時点まで探索する
 				threadLastTp = getLastMethodEntryInThread(threadRoots.get(traceLastThread), threadLastTp);
 				if (threadLastTp == null) break;
 				if (visitor.postVisitMethodExecution(threadLastExecution, threadLastExecution.getChildren())) {
+					// 該当するメソッド実行を見つけた
 					return threadLastExecution;
 				}
 				threadLastExecution = threadLastTp.getMethodExecution();
 			} while (threadLastExecution.getEntryTime() > traceLastTime2);
 			threadLastPoints.put(traceLastThread, threadLastTp);
 			traceLastThread = traceLastThread2;
-			
+			// 次の次に探索すべきスレッド(未探索の領域が一番最後まで残っているスレッド)を決定する
 			traceLastTime2 = 0;
 			traceLastThread2 = null;
 			boolean continueTraverse = false;
-			Iterator<String> threadIterator = threadLastPoints.keySet().iterator();
-			for (; threadIterator.hasNext();) {
-				String threadId = threadIterator.next();
+			for (String threadId: threadLastPoints.keySet()) {
 				if (!threadId.equals(traceLastThread)) {
 					TracePoint lastTp = threadLastPoints.get(threadId);
 					if (lastTp != null) {
@@ -855,28 +889,28 @@ public class Trace {
 	}
 	
 	/**
-	 * Get all method executions in this trace that start within a specified term.
-	 * @param visitor a method execution visitor
-	 * @param markStart the start time of a term
-	 * @param markEnd the end time of a term
+	 * 呼び出し時の時刻が markStart から markEnd の間にある全スレッド中の全メソッド実行を探索する
+	 * @param visitor　ビジター
+	 * @param markStart 開始時刻
+	 * @param markEnd 終了時刻
 	 */
 	public void traverseMarkedMethodExecutions(IMethodExecutionVisitor visitor, long markStart, long markEnd) {
-		Iterator<String> threadsIterator = threads.keySet().iterator();
-		for (; threadsIterator.hasNext();) {
-			ThreadInstance thread = threads.get(threadsIterator.next());
+		for (String threadId: threads.keySet()) {
+			ThreadInstance thread = threads.get(threadId);
 			thread.traverseMarkedMethodExecutions(visitor, markStart, markEnd);
 		}		
 	}
 	
 	/**
-	 * Traverse forward all statements in this trace with synchronizing all threads.
-	 * @param visitor a statement visitor
-	 * @return the execution point where the traverse is aborted
+	 * トレース内の全スレッドを同期させならが全実行文を順方向に探索する
+	 * 
+	 * @param visitor 実行文のビジター
+	 * @return 中断したトレースポイント
 	 */
 	public TracePoint traverseStatementsInTrace(IStatementVisitor visitor) {
 		HashMap<String, ArrayList<MethodExecution>> threadRoots = new HashMap<String, ArrayList<MethodExecution>>();
 		HashMap<String, TracePoint> threadCurPoints = new HashMap<String, TracePoint>();
-		// Search the first method execution in each thread.
+		// 各スレッドにおいて一番最初に開始したメソッド実行を探す
 		long traceCurTime = -1;
 		String traceCurThread = null;
 		long traceCurTime2 = -1;
@@ -910,8 +944,9 @@ public class Trace {
 			HashMap<String, ArrayList<MethodExecution>> threadRoots,
 			HashMap<String, TracePoint> threadCurPoints, 
 			String curThreadId, String nextThreadId, long nextThreadTime) {
-		// Traverse statements forward with synchronizing all threads.
+		// 全スレッドの同期をとりながら順方向に実行文を探索する
 		for (;;) {
+			// 探索対象のスレッド内の順方向探索
 			TracePoint curTp = threadCurPoints.get(curThreadId);
 			while (curTp != null 
 					&& (curTp.getStatement().getTimeStamp() <= nextThreadTime || nextThreadTime == -1)) {
@@ -920,20 +955,26 @@ public class Trace {
 				if (!(statement instanceof MethodInvocation)) {
 					if (visitor.postVisitStatement(statement)) return curTp;
 				}
-				curTp.stepNoReturn();
+				curTp.stepNoReturn();		// 復帰せずに呼び出し木を潜っていく
 				if (!curTp.isValid()) {
-					while (!curTp.stepOver()) {
+					// 復帰しないとこれ以上探索できない
+					while (!curTp.stepOver()) {		// 今度は復帰はするが潜らずに探索
 						if (curTp.isValid()) {
+							// 呼び出し先探索前に一度訪問済みのメソッド呼び出し行を、探索後もう一度訪問する
 							if (visitor.postVisitStatement(curTp.getStatement())) return curTp;
 						} else {
+							// 呼び出し木の開始時点まで探索し終えた場合
 							ArrayList<MethodExecution> roots = threadRoots.get(curThreadId);
 							while (!curTp.isValid() && roots.size() > 0) {
+								// 次の呼び出し木があればそれを最初から探索
 								MethodExecution firstExecution = roots.remove(0);
 								curTp = firstExecution.getEntryPoint();							
 							}
 							if (curTp.isValid()) {
+								// 次の呼び出し木があればそれを最初から探索
 								threadCurPoints.put(curThreadId, curTp);
 							} else {
+								// そのスレッドの探索がすべて終了した場合
 								threadCurPoints.put(curThreadId, null);
 								curTp = null;
 							}						
@@ -944,6 +985,7 @@ public class Trace {
 			}
 			curThreadId = nextThreadId;
 			if (curThreadId == null) break;
+			// 次の次に探索すべきスレッド(未探索の領域が一番最初に始まるスレッド)を決定する
 			nextThreadTime = -1;
 			nextThreadId = null;
 			boolean continueTraverse = false;
@@ -966,21 +1008,20 @@ public class Trace {
 	}
 	
 	/**
-	 * Traverse backward all statements in this trace with synchronizing all threads.
-	 * @param visitor a statement visitor
-	 * @return the execution point where the traverse is aborted
+	 * トレース内の全スレッドを同期させならが全実行文を逆方向に探索する
+	 * 
+	 * @param visitor 実行文のビジター
+	 * @return 中断したトレースポイント
 	 */
 	public TracePoint traverseStatementsInTraceBackward(IStatementVisitor visitor) {
 		HashMap<String, ArrayList<MethodExecution>> threadRoots = new HashMap<String, ArrayList<MethodExecution>>();
 		HashMap<String, TracePoint> threadLastPoints = new HashMap<String, TracePoint>();
-		Iterator<String> threadsIterator = threads.keySet().iterator();
-		// Search the last method execution in each thread.
+		// 各スレッドにおいて一番最後に開始したメソッド実行を探す
 		long traceLastTime = 0;
 		String traceLastThread = null;
 		long traceLastTime2 = 0;
 		String traceLastThread2 = null;
-		for (; threadsIterator.hasNext();) {
-			String threadId = threadsIterator.next();
+		for (String threadId: threads.keySet()) {
 			ThreadInstance thread = threads.get(threadId);
 			ArrayList<MethodExecution> root = (ArrayList<MethodExecution>)thread.getRoot().clone();
 			threadRoots.put(threadId, root);
@@ -1007,22 +1048,23 @@ public class Trace {
 	}
 	
 	/**
-	 * Traverse backward all statements before a given execution point in this trace with synchronizing all threads.
-	 * @param visitor a statement visitor
-	 * @param before an execution point 
-	 * @return the execution point where the traverse is aborted
+	 * 
+	 * @param visitor
+	 * @param before
+	 * @return
 	 */
 	public TracePoint traverseStatementsInTraceBackward(IStatementVisitor visitor, TracePoint before) {
+		if (before == null) {
+			return traverseStatementsInTraceBackward(visitor);
+		}
 		if (traverseStatamentsInCallTreeBackwardNoReturn(visitor, before)) return before;
 		HashMap<String, ArrayList<MethodExecution>> threadRoots = new HashMap<String, ArrayList<MethodExecution>>();
 		HashMap<String, TracePoint> threadLastPoints = new HashMap<String, TracePoint>();
-		Iterator<String> threadsIterator = threads.keySet().iterator();
 		String traceLastThread = null;
 		long traceLastTime2 = 0;
 		String traceLastThread2 = null;
 		ThreadInstance thread = threads.get(before.getStatement().getThreadNo());
-		for (; threadsIterator.hasNext();) {
-			String threadId = threadsIterator.next();
+		for (String threadId: threads.keySet()) {
 			ThreadInstance t = threads.get(threadId);
 			ArrayList<MethodExecution> rootExecutions = (ArrayList<MethodExecution>)t.getRoot().clone();
 			threadRoots.put(threadId, rootExecutions);
@@ -1060,25 +1102,32 @@ public class Trace {
 			HashMap<String, ArrayList<MethodExecution>> threadRoots,
 			HashMap<String, TracePoint> threadLastPoints, 
 			String traceLastThread, String traceLastThread2, long traceLastTime2) {
-		// Traverse statements backward with synchronizing all threads.
+		// 全スレッドの同期をとりながら逆向きに実行文を探索する
 		for (;;) {
+			// 探索対象のスレッド内の逆向き探索
 			TracePoint lastTp = threadLastPoints.get(traceLastThread);
 			do {
 				if (lastTp.stepBackOver()) {
+					// そのスレッドの次のメソッド実行開始時点まで探索する
 					if (traverseStatamentsInCallTreeBackwardNoReturn(visitor, lastTp)) return lastTp;					
 				} else {
+					// 呼び出し元に戻った場合
 					if (lastTp.isValid()) {
 						if (visitor.postVisitStatement(lastTp.getStatement())) return lastTp;
 					} else {
+						// 呼び出し木の開始時点まで探索し終えた場合
 						ArrayList<MethodExecution> root = threadRoots.get(traceLastThread);
 						while (!lastTp.isValid() && root.size() > 0) {
+							// 次の呼び出し木があればそれを最後から探索
 							MethodExecution lastExecution = root.remove(root.size() - 1);
 							lastTp = lastExecution.getExitPoint();							
 						}
 						if (lastTp.isValid()) {
+							// 次の呼び出し木があればそれを最後から探索
 							threadLastPoints.put(traceLastThread, lastTp);
 							if (traverseStatamentsInCallTreeBackwardNoReturn(visitor, lastTp)) return lastTp;
 						} else {
+							// そのスレッドの探索がすべて終了した場合
 							threadLastPoints.put(traceLastThread, null);
 							break;
 						}
@@ -1086,13 +1135,11 @@ public class Trace {
 				}
 			} while (lastTp.getMethodExecution().getEntryTime() >= traceLastTime2);
 			traceLastThread = traceLastThread2;
-			
+			// 次の次に探索すべきスレッド(未探索の領域が一番最後まで残っているスレッド)を決定する
 			traceLastTime2 = 0;
 			traceLastThread2 = null;
 			boolean continueTraverse = false;
-			Iterator<String> threadsIterator = threadLastPoints.keySet().iterator();
-			for (; threadsIterator.hasNext();) {
-				String threadId = threadsIterator.next();
+			for (String threadId: threadLastPoints.keySet()) {
 				if (!threadId.equals(traceLastThread)) {
 					TracePoint threadLastTp = threadLastPoints.get(threadId);
 					if (threadLastTp != null) {
@@ -1111,35 +1158,39 @@ public class Trace {
 	}
 		
 	/**
-	 * Traverse backward all statement executions in the call tree before a specified execution point (while the visitor returns false).
-	 * @param visitor a statement execution visitor
-	 * @param before an execution point (also fixing a target thread)
-	 * @return true -- aborted, false -- terminates normally
+	 * before で指定したトレースポイント以前の同一呼び出し木内の全実行文を逆向きに探索する(ただし、visitor が true を返すまで)
+	 * @param visitor ビジター
+	 * @param before 探索の開始点(探索対象スレッドも指定している)
+	 * @return true -- 探索を中断した, false -- 最後まで探索した
 	 */
 	public boolean traverseStatementsInCallTreeBackward(IStatementVisitor visitor, TracePoint before) {
 		for (;;) {
 			if (traverseStatamentsInCallTreeBackwardNoReturn(visitor, before)) return true;
-			before.stepBackOver();
+			while (!before.stepBackOver()) {
+				if (!before.isValid()) break;
+				if (visitor.postVisitStatement(before.getStatement())) return true;
+			}
 			if (!before.isValid()) break;
 		}
 		return false;
 	}
 
 	/**
-	 * Traverse backward all statement executions in the call tree without returning to the parent before a specified execution point.
-	 * @param visitor a statement execution visitor
-	 * @param before an execution point (also fixing a target thread)
-	 * @return true -- aborted, false -- cannot traverse any more without return
+	 * before以前の呼び出し木を呼び出し先からの復帰をせずに行けるところまで逆向きに探索する
+	 * 
+	 * @param visitor 実行文のビジター
+	 * @param before 探索開始実行時点
+	 * @return true -- 探索を中断した, false -- 復帰をしない限りこれ以上進めない 
 	 */
 	private boolean traverseStatamentsInCallTreeBackwardNoReturn(IStatementVisitor visitor, TracePoint before) {
 		for (;;) {
 			Statement statement = before.getStatement();
 			if (statement instanceof MethodInvocation) {
-				// preVisit and postVisit are separately called back in the case of method invocation.
+				// メソッド呼び出し文の場合は、呼び出しの前後で preVisit と postVisit を別々に実行する
 				if (visitor.preVisitStatement(statement)) return true;
 				before.stepBackNoReturn();
 				if (!before.isValid()) {
-					// In the case that no statement execution is recorded in the callee method.
+					// 呼び出し先のメソッドで実行文が記録されていない場合
 					before.stepBackOver();
 					if (visitor.postVisitStatement(statement)) return true;
 					if (before.isMethodEntry()) return false;
@@ -1155,10 +1206,10 @@ public class Trace {
 	}
 	
 	/**
-	 * Traverse backward all method executions in the call tree before a specified execution point (while the visitor returns false).
-	 * @param visitor a method execution visitor
-	 * @param before an execution point (also fixing a target thread)
-	 * @return true -- aborted, false -- terminates normally
+	 * before で指定したトレースポイント以前の同一スレッド内の全メソッド実行を呼び出し木の中で逆向きに探索する(ただし、visitor が true を返すまで)
+	 * @param visitor ビジター
+	 * @param before 探索の開始点(探索対象スレッドも指定している)
+	 * @return true -- 探索を中断した, false -- 最後まで探索した
 	 */
 	public boolean traverseMethodExecutionsInCallTreeBackward(IMethodExecutionVisitor visitor, TracePoint before) {
 		ArrayList<MethodExecution> prevMethodExecutions = before.getPreviouslyCalledMethods();
@@ -1176,6 +1227,7 @@ public class Trace {
 	}
 
 	public static String getDeclaringType(String methodSignature, boolean isConstructor) {
+		if (methodSignature == null) return null;
 		if (isConstructor) {
 			String[] fragments = methodSignature.split("\\(");
 			return fragments[0].substring(fragments[0].lastIndexOf(' ') + 1);			

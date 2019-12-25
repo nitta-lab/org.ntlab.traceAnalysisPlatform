@@ -4,6 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
+/**
+ * An execution of a method in a trace
+ * @author Nitta
+ *
+ */
 public class MethodExecution {
 	private String signature;
 	private String callerSideSignature;
@@ -175,9 +180,9 @@ public class MethodExecution {
 	}
 	
 	/**
-	 * このメソッド実行およびその全呼び出し先を呼び出し木の中で逆向きに探索する(ただし、visitor が true を返すまで)
-	 * @param visitor ビジター
-	 * @return　true -- 探索を中断した, false -- 最後まで探索した
+	 * Traverse backward all descendant method executions of this method execution in the call tree (while the visitor does not return true)
+	 * @param visitor   a method execution visitor
+	 * @return　true -- aborted, false -- terminates normally
 	 */
 	public boolean traverseMethodExecutionsBackward(IMethodExecutionVisitor visitor) {
 		if (visitor.preVisitMethodExecution(this)) return true;
@@ -190,6 +195,12 @@ public class MethodExecution {
 		return false;
 	}
 
+	/**
+	 * Traverse forward all descendant method executions of this method execution in the call tree (within a marked term)
+	 * @param visitor   a method execution visitor
+	 * @param markStart the start time of a term to traverse
+	 * @param markEnd   the end time of a term to traverse
+	 */
 	public void traverseMarkedMethodExecutions(IMethodExecutionVisitor visitor, long markStart, long markEnd) {
 		if (entryTime <= markEnd) {
 			if (entryTime >= markStart) {
@@ -272,9 +283,9 @@ public class MethodExecution {
 	}
 	
 	/**
-	 *　引数で渡されたmethodExecutionを呼び出したメソッド呼び出しを探して返す
-	 * @param child このmethodExecutionから呼び出されたことのある別のmethodExecution
-	 * @return 引数で渡されたmethodExecutionを呼び出したことを記録しているメソッド呼び出し
+	 *　Search the first method invocation within this method execution that calls a given method execution
+	 * @param child a method execution
+	 * @return the first method invocation within this method execution that calls child
 	 */
 	public MethodInvocation getMethodInvocation(MethodExecution child) {
 		int callerStatementExecution = child.getCallerStatementExecution();
@@ -285,8 +296,8 @@ public class MethodExecution {
 	}
 
 	/**
-	 * orderを指定して対応するTracePointを返す
-	 * @param order TracePointのorder
+	 * Create TracePoint object that refers to a statement execution within this method execution by specifying its order
+	 * @param order the order of a statement execution in the sequence of statement executions within this method execution
 	 * @return
 	 */
 	public TracePoint getTracePoint(int order) {

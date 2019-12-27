@@ -113,6 +113,16 @@ public class MethodExecution {
 	}
 
 	public long getExitTime() {
+		if (isTerminated || exitTime == 0L) {
+			TracePoint exitPoint = getExitPoint();
+			if (!exitPoint.isValid()) return entryTime;
+			Statement lastStatament = exitPoint.getStatement();
+			if (lastStatament instanceof MethodInvocation) {
+				return ((MethodInvocation) lastStatament).getCalledMethodExecution().getExitTime();
+			} else {
+				return lastStatament.getTimeStamp();
+			}
+		}
 		return exitTime;
 	}
 

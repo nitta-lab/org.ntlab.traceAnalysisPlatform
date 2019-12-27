@@ -4,13 +4,9 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Stack;
 
 /**
@@ -52,7 +48,7 @@ public class TraceJSON extends Trace {
 			e.printStackTrace();
 		}
 	}
-	
+
 	private void readJSON(BufferedReader file) throws IOException {
 		// Read a trace file.
 		String line = null;
@@ -390,7 +386,7 @@ public class TraceJSON extends Trace {
 			}
 		}
 	}
-	
+
 	/**
 	 * Parse a JSON object containing a class name and an object ID.
 	 * @param classNameAndObjectIdJSON a JSON object in this trace
@@ -415,7 +411,7 @@ public class TraceJSON extends Trace {
 		}
 		return argumentsData;
 	}
-
+	
 	/**
 	 * Get the singleton object to record an online trace.
 	 * @return
@@ -562,7 +558,7 @@ public class TraceJSON extends Trace {
 				}
 				@Override
 				public boolean preVisitMethodExecution(MethodExecution methodExecution) {
-					if (methodExecution.getExitTime() < markStart) return true;		// íTçıèIóπ
+					if (!methodExecution.isTerminated() && methodExecution.getExitTime() < markStart) return true;		// Terminate normally
 					if (methodExecution.getEntryTime() > markEnd) return false;
 					for (Statement s: methodExecution.getStatements()) {
 						if (s instanceof BlockEnter) {
@@ -648,7 +644,7 @@ public class TraceJSON extends Trace {
 				}
 				@Override
 				public boolean preVisitMethodExecution(MethodExecution methodExecution) {
-					if (methodExecution.getExitTime() < markStart) return true;		// Terminate normally
+					if (!methodExecution.isTerminated() && methodExecution.getExitTime() < markStart) return true;		// Terminate normally
 					if (methodExecution.getEntryTime() > markEnd) return false;
 					int prevBlockId = -1;
 					for (Statement s: methodExecution.getStatements()) {
@@ -675,110 +671,246 @@ public class TraceJSON extends Trace {
 		}	
 		return flows;
 	}
+	
+	/**
+	 * Traverse backward all statements in this trace with synchronizing all threads.
+	 * @param visitor a statement visitor
+	 * @return the execution point where the traverse is aborted
+	 */
+	public TracePoint traverseStatementsInTraceBackward(IStatementVisitor visitor) {
+		HashMap<String, ArrayList<MethodExecution>> threadRoots = new HashMap<String, ArrayList<MethodExecution>>();
+		HashMap<String, TracePoint> threadLastPoints = new HashMap<String, TracePoint>();
+		// Search the last method execution in each thread.
+		long traceLastTime = 0;
+		String traceLastThread = null;
+		long traceLastTime2 = 0;
+		String traceLastThread2 = null;
+		for (String threadId: threads.keySet()) {
+			ThreadInstance thread = threads.get(threadId);
+			ArrayList<MethodExecution> roots = (ArrayList<MethodExecution>)thread.getRoot().clone();
+			threadRoots.put(threadId, roots);
+			TracePoint threadLastTp;
+			do {
+				MethodExecution threadLastExecution = roots.remove(roots.size() - 1);
+				threadLastTp = threadLastExecution.getExitPoint();
+			} while (!threadLastTp.isValid() && roots.size() > 0);
+			if (threadLastTp.isValid()) {
+				threadLastPoints.put(threadId, threadLastTp);
+				long threadLastTime;
+				if (threadLastTp.getStatement() instanceof MethodInvocation) {
+					threadLastTime = ((MethodInvocation) threadLastTp.getStatement()).getCalledMethodExecution().getExitTime();
+				} else {
+					threadLastTime = threadLastTp.getStatement().getTimeStamp();
+				}				
+				if (traceLastTime < threadLastTime) {
+					traceLastTime2 = traceLastTime;
+					traceLastThread2 = traceLastThread;
+					traceLastTime = threadLastTime;
+					traceLastThread = threadId;
+				}
+			} else {
+				threadLastPoints.put(threadId, null);	
+			}
+		}
+		return traverseStatementsInTraceBackwardSub(visitor, threadRoots, threadLastPoints, traceLastThread, traceLastThread2, traceLastTime2);
+	}
+	
+	/**
+	 * Traverse backward all statements from a given execution point in this trace with synchronizing all threads.
+	 * @param visitor a statement visitor
+	 * @param before an execution point 
+	 * @return the execution point where the traverse is aborted
+	 */
+	public TracePoint traverseStatementsInTraceBackward(IStatementVisitor visitor, TracePoint before) {
+		if (before == null) {
+			return traverseStatementsInTraceBackward(visitor);
+		}
+		HashMap<String, ArrayList<MethodExecution>> threadRoots = new HashMap<String, ArrayList<MethodExecution>>();
+		HashMap<String, TracePoint> threadLastPoints = new HashMap<String, TracePoint>();
+		String traceLastThread = null;
+		long traceLastTime2 = 0;
+		String traceLastThread2 = null;
+		ThreadInstance thread = threads.get(before.getStatement().getThreadNo());
+		for (String threadId: threads.keySet()) {
+			ThreadInstance t = threads.get(threadId);
+			ArrayList<MethodExecution> rootExecutions = (ArrayList<MethodExecution>)t.getRoot().clone();
+			threadRoots.put(threadId, rootExecutions);
+			if (t == thread) {
+				traceLastThread = threadId;
+				threadLastPoints.put(threadId, before);
+				for (int n = rootExecutions.size() - 1; n >= 0; n--) {
+					MethodExecution root = rootExecutions.get(n);
+					if (root.getEntryTime() > before.getStatement().getTimeStamp()) {
+						rootExecutions.remove(n);
+					} else {
+						break;
+					}
+				}
+				if (rootExecutions.size() > 0) {
+					rootExecutions.remove(rootExecutions.size() - 1);
+				}
+			} else {
+				TracePoint threadBeforeTp;
+				do {
+					MethodExecution threadLastExecution = rootExecutions.remove(rootExecutions.size() - 1);
+					threadBeforeTp = threadLastExecution.getExitPoint();
+				} while (!threadBeforeTp.isValid() && rootExecutions.size() > 0);
+				if (threadBeforeTp.isValid()) {
+					TracePoint[] tp = new TracePoint[] {threadBeforeTp};
+					long threadLastTime;
+					if (before.getStatement() instanceof MethodInvocation) {
+						threadLastTime = ((MethodInvocation) before.getStatement()).getCalledMethodExecution().getExitTime();
+					} else {
+						threadLastTime = before.getStatement().getTimeStamp();
+					}
+					getLastStatementInThread(rootExecutions, tp, threadLastTime, new IStatementVisitor() {
+						@Override
+						public boolean preVisitStatement(Statement statement) { return false; }
+						@Override
+						public boolean postVisitStatement(Statement statement) { return false; }
+					});
+					threadLastPoints.put(threadId, tp[0]);
+					if (tp[0] != null) {
+						if (tp[0].getStatement() instanceof MethodInvocation) {
+							threadLastTime = ((MethodInvocation) tp[0].getStatement()).getCalledMethodExecution().getExitTime();	// Å¶Exception Ç™î≠ê∂ÇµÇΩèÍçáÇÕçlÇ¶Ç»Ç≠ÇƒÇÊÇ¢?
+						} else {
+							threadLastTime = tp[0].getStatement().getTimeStamp();
+						}
+						if (traceLastTime2 < threadLastTime) {
+							traceLastTime2 = threadLastTime;
+							traceLastThread2 = threadId;
+						}
+					}					
+				} else {
+					threadLastPoints.put(threadId, null);					
+				}
+			}
+		}
+		return traverseStatementsInTraceBackwardSub(visitor, threadRoots, threadLastPoints, traceLastThread, traceLastThread2, traceLastTime2);
+	}
+	
+	/**
+	 * Traverse backward all statements from a given execution point in this trace with synchronizing all threads.
+	 * @param visitor a statement visitor
+	 * @param before start time 
+	 * @return the execution point where the traverse is aborted
+	 */
+	public TracePoint traverseStatementsInTraceBackward(IStatementVisitor visitor, long before) {
+		if (before <= 0L) {
+			return traverseStatementsInTraceBackward(visitor);
+		}
+		HashMap<String, ArrayList<MethodExecution>> threadRoots = new HashMap<String, ArrayList<MethodExecution>>();
+		HashMap<String, TracePoint> threadLastPoints = new HashMap<String, TracePoint>();
+		long traceLastTime = 0;
+		String traceLastThread = null;
+		long traceLastTime2 = 0;
+		String traceLastThread2 = null;
+		for (String threadId: threads.keySet()) {
+			ThreadInstance t = threads.get(threadId);
+			ArrayList<MethodExecution> rootExecutions = (ArrayList<MethodExecution>)t.getRoot().clone();
+			threadRoots.put(threadId, rootExecutions);
+			TracePoint threadBeforeTp;
+			do {
+				MethodExecution threadLastExecution = rootExecutions.remove(rootExecutions.size() - 1);
+				threadBeforeTp = threadLastExecution.getExitPoint();
+			} while (!threadBeforeTp.isValid() && rootExecutions.size() > 0);
+			if (threadBeforeTp.isValid()) {
+				TracePoint[] tp = new TracePoint[] {threadBeforeTp};
+				getLastStatementInThread(rootExecutions, tp, before, new IStatementVisitor() {
+					@Override
+					public boolean preVisitStatement(Statement statement) { return false; }
+					@Override
+					public boolean postVisitStatement(Statement statement) { return false; }
+				});
+				threadLastPoints.put(threadId, tp[0]);
+				if (tp[0] != null) {
+					long threadLastTime;
+					if (tp[0].getStatement() instanceof MethodInvocation) {
+						threadLastTime = ((MethodInvocation) tp[0].getStatement()).getCalledMethodExecution().getExitTime();	// Å¶Exception Ç™î≠ê∂ÇµÇΩèÍçáÇÕçlÇ¶Ç»Ç≠ÇƒÇÊÇ¢?
+					} else {
+						threadLastTime = tp[0].getStatement().getTimeStamp();
+					}
+					if (traceLastTime < threadLastTime) {
+						traceLastTime2 = traceLastTime;
+						traceLastThread2 = traceLastThread;
+						traceLastTime = threadLastTime;
+						traceLastThread = threadId;
+					}
+				}					
+			} else {
+				threadLastPoints.put(threadId, null);					
+			}
+		}
+		return traverseStatementsInTraceBackwardSub(visitor, threadRoots, threadLastPoints, traceLastThread, traceLastThread2, traceLastTime2);
+	}
 
-//	/**
-//	 * Get the last update of a specified field of a specified container in a specified thread (for online analysis). 
-//	 * @param containerObjId a container object 
-//	 * @param fieldName      a field name of the object 
-//	 * @param thread         a thread
-//	 * @return the corresponding field update
-//	 */
-//	public static FieldUpdate getRecentlyFieldUpdate(String containerObjId, String fieldName, Thread thread) {
-//		TracePoint before = getCurrentTracePoint(thread);
-//		if (!before.isValid()) {
-//			before.stepBackOver();
-//			if (!before.isValid()) {
-//				return null; // Cannot backward traverse any more (for example, the entry point of the root method) (without this, TimeoutException occurs at runtime).
-//			}
-//		}
-//		TracePoint tp = getFieldUpdateTracePoint(containerObjId, fieldName, before);
-//		if (tp != null && tp.getStatement() instanceof FieldUpdate) {
-//			return (FieldUpdate)tp.getStatement();				
-//		}
-//		return null;
-//	}
-//
-//	/**
-//	 * Get the last update of a specified field of a specified container before a specified execution point (for online analysis).
-//	 * @param containerObjId a container object 
-//	 * @param fieldName      a field name of the object 
-//	 * @param before         an execution point
-//	 * @return the corresponding execution point in this trace
-//	 */
-//	public static TracePoint getFieldUpdateTracePoint(final String containerObjId, final String fieldName, TracePoint before) {		
-//		before = before.duplicate();
-//		before = getInstance().traverseStatementsInTraceBackward(new IStatementVisitor() {
-//			@Override
-//			public boolean preVisitStatement(Statement statement) {
-//				if (statement instanceof FieldUpdate) {
-//					FieldUpdate fu = (FieldUpdate)statement;					
-//					if (fu.getContainerObjId().equals(containerObjId)
-//							&& fu.getFieldName().equals(fieldName)) {
-//						// Matches with both array objectID and the index
-//						return true;
-//					}
-//				}
-//				return false;
-//			}
-//			@Override
-//			public boolean postVisitStatement(Statement statement) { return false; }
-//		}, before);
-//		if (before != null) {
-//			return before;			
-//		}
-//		return null;
-//	}
-//	
-//	/**
-//	 * Get the last update of a specified element of a specified array object in a specified thread (for online analysis).
-//	 * @param arrayObjId an array object
-//	 * @param index      an index of an element
-//	 * @param thread     a thread
-//	 * @return the corresponding array update
-//	 */
-//	public static ArrayUpdate getRecentlyArrayUpdate(String arrayObjId, int index, Thread thread) {
-//		TracePoint before = getCurrentTracePoint(thread);
-//		if (!before.isValid()) {
-//			before.stepBackOver();
-//			if (!before.isValid()) {
-//				return null; // Cannot backward traverse any more (for example, the entry point of the root method) (without this, TimeoutException occurs at runtime).
-//			}
-//		}
-//		TracePoint tp = getArrayUpdateTracePoint(arrayObjId, index, before);
-//		if (tp != null && tp.getStatement() instanceof ArrayUpdate) {
-//			return (ArrayUpdate)tp.getStatement();
-//		}
-//		return null;		
-//	}
-//
-//	/**
-//	 * Get the last update of a specified element of a specified array object before a specified execution point (for online analysis).
-//	 * @param arrayObjId an array object
-//	 * @param index      an index of an element
-//	 * @param before     an execution point
-//	 * @return the corresponding execution point in this trace
-//	 */
-//	public static TracePoint getArrayUpdateTracePoint(final String arrayObjId, final int index, TracePoint before) {		
-//		before = before.duplicate();
-//		before = getInstance().traverseStatementsInTraceBackward(new IStatementVisitor() {
-//			@Override
-//			public boolean preVisitStatement(Statement statement) {
-//				if (statement instanceof ArrayUpdate) {
-//					ArrayUpdate au = (ArrayUpdate)statement;
-//					if (au.getArrayObjectId().equals(arrayObjId)
-//							&& au.getIndex() == index) {
-//						// Matches with both array objectID and the index
-//						return true;
-//					}
-//				}
-//				return false;
-//			}
-//			@Override
-//			public boolean postVisitStatement(Statement statement) { return false; }
-//		}, before);
-//		if (before != null) {
-//			return before;			
-//		}
-//		return null;
-//	}
+	private TracePoint traverseStatementsInTraceBackwardSub(IStatementVisitor visitor,
+			HashMap<String, ArrayList<MethodExecution>> threadRoots,
+			HashMap<String, TracePoint> threadLastPoints, 
+			String traceLastThread, String traceLastThread2, long traceLastTime2) {
+		// Traverse statements backward with synchronizing all threads.
+		for (;;) {
+			TracePoint lastTp = threadLastPoints.get(traceLastThread);
+			while (lastTp != null) {
+				Statement statement = lastTp.getStatement();
+				if (visitor.preVisitStatement(statement)) return lastTp;
+				if (statement instanceof MethodInvocation) {
+					lastTp.stepBackNoReturn();
+					if (lastTp.isValid()) {
+						MethodExecution methodExecution = ((MethodInvocation) statement).getCalledMethodExecution();
+						if (!methodExecution.isTerminated() && methodExecution.getExitTime() < traceLastTime2) {
+							break;
+						}
+						continue;
+					}
+				} else {
+					if (visitor.postVisitStatement(statement)) return lastTp;					
+				}
+				if (lastTp.isValid() && lastTp.getStatement().getTimeStamp() < traceLastTime2) break;				
+				while (!lastTp.stepBackOver() && lastTp.isValid()) {
+					statement = lastTp.getStatement();
+					if (visitor.postVisitStatement(statement)) return lastTp;
+				}
+				if (!lastTp.isValid()) {
+					ArrayList<MethodExecution> roots = threadRoots.get(traceLastThread);
+					while (!lastTp.isValid() && roots.size() > 0) {
+						MethodExecution lastExecution = roots.remove(roots.size() - 1);
+						lastTp = lastExecution.getExitPoint();							
+					}
+					if (lastTp.isValid()) {
+						threadLastPoints.put(traceLastThread, lastTp);							
+						if (lastTp.getStatement().getTimeStamp() < traceLastTime2) break;				
+					} else {
+						threadLastPoints.put(traceLastThread, null);
+						break;
+					}
+				}
+			}
+			traceLastThread = traceLastThread2;
+			traceLastTime2 = 0;
+			traceLastThread2 = null;
+			boolean continueTraverse = false;
+			for (String threadId: threadLastPoints.keySet()) {
+				if (!threadId.equals(traceLastThread)) {
+					TracePoint threadLastTp = threadLastPoints.get(threadId);
+					if (threadLastTp != null) {
+						continueTraverse = true;
+						long threadLastTime;
+						if (threadLastTp.getStatement() instanceof MethodInvocation) {
+							threadLastTime = ((MethodInvocation) threadLastTp.getStatement()).getCalledMethodExecution().getExitTime();
+						} else {
+							threadLastTime = threadLastTp.getStatement().getTimeStamp();
+						}				
+						if (traceLastTime2 < threadLastTime) {
+							traceLastTime2 = threadLastTime;
+							traceLastThread2 = threadId;
+						}
+					}
+				}
+			}
+			if (traceLastThread == null && traceLastThread2 == null) break;
+			if (!continueTraverse && threadLastPoints.get(traceLastThread) == null) break;
+		}
+		return null;
+	}
 }

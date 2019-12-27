@@ -707,6 +707,9 @@ public class TraceJSON extends Trace {
 					traceLastThread2 = traceLastThread;
 					traceLastTime = threadLastTime;
 					traceLastThread = threadId;
+				} else if (traceLastTime2 < threadLastTime) {
+					traceLastTime2 = threadLastTime;
+					traceLastThread2 = threadId;
 				}
 			} else {
 				threadLastPoints.put(threadId, null);	
@@ -835,6 +838,9 @@ public class TraceJSON extends Trace {
 						traceLastThread2 = traceLastThread;
 						traceLastTime = threadLastTime;
 						traceLastThread = threadId;
+					} else if (traceLastTime2 < threadLastTime) {
+						traceLastTime2 = threadLastTime;
+						traceLastThread2 = threadId;
 					}
 				}					
 			} else {

@@ -39,10 +39,13 @@ public class Tracer {
 	public static final String TRACER = "org.ntlab.traceAnalysisPlatform.tracer.";
 	public static final String TRACER_CLASS_PATH = "org/ntlab/traceAnalysisPlatform/tracer/Tracer.class";
 	public static final String JAVASSIST_LIBRARY = "javassist.jar";
-	private static final String STANDARD_CLASSES = "java.util.ListIterator|java.util.Iterator|java.util.List|java.util.Vector|java.util.ArrayList|java.util.Stack|java.util.Map|java.util.HashMap|java.util.Set|java.util.HashSet|java.util.Hashtable|java.util.LinkedList|java.lang.Thread";
-	private static final String CONCRETE_STANDARD_CLASSES = "java.util.Vector|java.util.ArrayList|java.util.Stack|java.util.HashMap|java.util.HashSet|java.util.Hashtable|java.util.LinkedList|java.lang.Thread";
+	private static final String STANDARD_CLASSES = "java.util.ListIterator|java.util.Iterator|java.util.List|java.util.Vector|java.util.ArrayList|java.util.Stack|java.util.Map|java.util.HashMap|java.util.Set|java.util.HashSet|java.util.Hashtable|java.util.LinkedList|java.lang.Thread|java.awt.Component|java.awt.Container|javax.swing.AbstractButton|javax.swing.ActionMap|javax.swing.JTabbedPane";
+	private static final String CONCRETE_STANDARD_CLASSES = "java.util.Vector|java.util.ArrayList|java.util.Stack|java.util.HashMap|java.util.HashSet|java.util.Hashtable|java.util.LinkedList|java.lang.Thread|java.awt.Container|java.awt.Panel|java.awt.ScrollPane|java.awt.Window|java.awt.Dialog|java.awt.Frame|javax.swing.JFrame|javax.swing.JPanel|javax.swing.JScrollPane|javax.swing.JTabbedPane|javax.swing.JToolBar|javax.swing.JMenuBar|javax.swing.JButton|javax.swing.JMenuItem|javax.swing.JMenu|javax.swing.JToggleButton|javax.swing.ActionMap";
+//	private static final String STANDARD_CLASSES = "java.util.ListIterator|java.util.Iterator|java.util.List|java.util.Vector|java.util.ArrayList|java.util.Stack|java.util.Map|java.util.HashMap|java.util.Set|java.util.HashSet|java.util.Hashtable|java.util.LinkedList|java.lang.Thread";
+//	private static final String CONCRETE_STANDARD_CLASSES = "java.util.Vector|java.util.ArrayList|java.util.Stack|java.util.HashMap|java.util.HashSet|java.util.Hashtable|java.util.LinkedList|java.lang.Thread";
 	private static final String EXCEPT_FOR_METHODS = "java.lang.Thread.currentThread..|java.lang.Thread.getId..";
 	private static final String STANDARD_LIB = "java.";
+	private static final String STANDARD_LIB2 = "javax.";
 	private static OutputStatementsGenerator outputStatementsGenerator = null;
 	private static ClassPool cp = null;
 	private static CodeConverter conv = null;
@@ -141,13 +144,25 @@ public class Tracer {
 	 */
 	public static void classInstrumentation(CtClass cc, String classPath) throws BadBytecode, NotFoundException, CannotCompileException, IOException {
 		try {
-			classInitializerInstrumentation(cc, cc.getClassInitializer());
+			try {
+				classInitializerInstrumentation(cc, cc.getClassInitializer());
+			} catch (CannotCompileException e) {
+				e.printStackTrace();
+			}
 			
 			for (final CtConstructor c : cc.getDeclaredConstructors()) {
-				methodInstrumentation(cc, c);
+				try {
+					methodInstrumentation(cc, c);
+				} catch (CannotCompileException e) {
+					e.printStackTrace();
+				}
 			}
 			for (final CtMethod m : cc.getDeclaredMethods()) {
-				methodInstrumentation(cc, m);
+				try {
+					methodInstrumentation(cc, m);
+				} catch (CannotCompileException e) {
+					e.printStackTrace();
+				}
 			}
 			try {
 				cc.instrument(conv);
@@ -255,7 +270,7 @@ public class Tracer {
 				try {
 					CtMethod m = c.getMethod();
 					String className = m.getDeclaringClass().getName();
-					if (!className.startsWith(STANDARD_LIB) && !className.startsWith(TRACER)) {
+					if (!className.startsWith(STANDARD_LIB) && !className.startsWith(STANDARD_LIB2) && !className.startsWith(TRACER)) {
 						// Normal method invocation
 						c.replace(outputStatementsGenerator.generateReplaceStatementsForCall(m.getDeclaringClass(), m, c.getLineNumber(), true));
 					} else if (className.matches(STANDARD_CLASSES) && !m.getLongName().matches(EXCEPT_FOR_METHODS)) {
@@ -270,7 +285,7 @@ public class Tracer {
 				try {
 					CtConstructor m = n.getConstructor();
 					String className = m.getDeclaringClass().getName();
-					if (!className.startsWith(STANDARD_LIB) && !className.startsWith(TRACER)) {
+					if (!className.startsWith(STANDARD_LIB) && !className.startsWith(STANDARD_LIB2) && !className.startsWith(TRACER)) {
 						// Normal constructor invocation
 						n.replace(outputStatementsGenerator.generateReplaceStatementsForCall(m.getDeclaringClass(), m, n.getLineNumber(), true));
 					} else if (m.getDeclaringClass().getName().matches(CONCRETE_STANDARD_CLASSES)) {

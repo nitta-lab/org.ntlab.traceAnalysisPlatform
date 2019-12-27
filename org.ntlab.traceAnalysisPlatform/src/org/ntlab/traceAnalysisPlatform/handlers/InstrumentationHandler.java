@@ -106,16 +106,16 @@ public abstract class InstrumentationHandler extends AbstractHandler {
 				break;
 			case IClasspathEntry.CPE_LIBRARY:
 				// A library referred to by the target Java project.
-				if (entry.getPath().getDevice() != null) {
-					// Maybe JRE system library, the class path of the library should not be appended more than once.
-					cp.appendClassPath(entry.getPath().toString());								
-				} else {
-					try {
-						URI path = PathUtility.workspaceRelativePathToAbsoluteURI(entry.getPath(), workspace);
-						cp.appendClassPath(PathUtility.URIPathToPath(path.getPath()));
-					} catch (NotFoundException e) {
-						// Sometimes the path of a library cannot be found for some reason.
+				try {
+					if (entry.getPath().getDevice() != null) {
+						// Maybe JRE system library, the class path of the library should not be appended more than once.
+						cp.appendClassPath(entry.getPath().toString());								
+					} else {
+							URI path = PathUtility.workspaceRelativePathToAbsoluteURI(entry.getPath(), workspace);
+							cp.appendClassPath(PathUtility.URIPathToPath(path.getPath()));
 					}
+				} catch (NotFoundException e) {
+					// Sometimes the path of a library cannot be found for some reason.
 				}
 				break;
 			case IClasspathEntry.CPE_PROJECT:

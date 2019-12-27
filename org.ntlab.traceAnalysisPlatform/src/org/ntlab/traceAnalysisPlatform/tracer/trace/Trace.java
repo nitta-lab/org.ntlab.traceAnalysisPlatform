@@ -942,6 +942,9 @@ public class Trace {
 					traceCurThread2 = traceCurThread;
 					traceCurTime = methodEntry;
 					traceCurThread = threadId;
+				} else if (traceCurTime2 == -1 || traceCurTime2 > methodEntry) {
+					traceCurTime2 = methodEntry;
+					traceCurThread2 = threadId;
 				}
 			} else {
 				threadCurPoints.put(threadId, null);				
@@ -1040,6 +1043,9 @@ public class Trace {
 					traceLastThread2 = traceLastThread;
 					traceLastTime = methodEntry;
 					traceLastThread = threadId;
+				} else if (traceLastTime2 < methodEntry) {
+					traceLastTime2 = methodEntry;
+					traceLastThread2 = threadId;
 				}
 			} else {
 				threadLastPoints.put(threadId, null);				

@@ -919,4 +919,93 @@ public class TraceJSON extends Trace {
 		}
 		return null;
 	}
+	
+	public TracePoint getFieldUpdateTracePoint(final String containerObjId, final String fieldName, final TracePoint tp, final boolean isReturned) {
+		TracePoint before = tp.duplicate();
+		before = traverseStatementsInTraceBackward(new IStatementVisitor() {
+			boolean arrivedBeforeStatement = false;
+			@Override
+			public boolean preVisitStatement(Statement statement) {
+				if (!isReturned && !arrivedBeforeStatement) return false;
+				if (statement instanceof FieldUpdate) {
+					FieldUpdate fu = (FieldUpdate)statement;					
+					if (fu.getContainerObjId().equals(containerObjId)
+							&& fu.getFieldName().equals(fieldName)) {
+						return true;
+					}
+				}
+				return false;
+			}
+			@Override
+			public boolean postVisitStatement(Statement statement) {
+				if (statement.equals(tp.getStatement())) arrivedBeforeStatement = true;
+				return false;
+			}
+		}, before);
+		if (before != null) {
+//			return (FieldUpdate)before.getStatement();
+			return before;
+		}
+		return null;
+	}
+	
+	/**
+	 * Get the last update of a specified field of a specified container before a specified execution point.
+	 * @param containerObjId  a container object
+	 * @param fieldName       a field name of the object
+	 * @param before          an execution point
+	 * @return the corresponding execution point in this trace
+	 */
+	public FieldUpdate getRecentlyFieldUpdate(final String containerObjId, final String fieldName, TracePoint before) {
+		before = before.duplicate();
+		before = traverseStatementsInTraceBackward(new IStatementVisitor() {
+			@Override
+			public boolean preVisitStatement(Statement statement) {
+				if (statement instanceof FieldUpdate) {
+					FieldUpdate fu = (FieldUpdate)statement;					
+					if (fu.getContainerObjId().equals(containerObjId)
+							&& fu.getFieldName().equals(fieldName)) {
+						return true;
+					}
+				}
+				return false;
+			}
+			@Override
+			public boolean postVisitStatement(Statement statement) { return false; }
+		}, before);
+		if (before != null) {
+			return (FieldUpdate)before.getStatement();
+		}
+		return null;
+	}
+	
+	/**
+	 * Get the last update of a specified element of a specified array object before a specified execution point.
+	 * @param arrayObjId an array object
+	 * @param index      an index of an element
+	 * @param before     an execution point
+	 * @return the corresponding execution point in this trace
+	 */
+	public ArrayUpdate getRecentlyArrayUpdate(final String arrayObjId, final int index, TracePoint before) {		
+		before = before.duplicate();
+		before = traverseStatementsInTraceBackward(new IStatementVisitor() {
+			@Override
+			public boolean preVisitStatement(Statement statement) {
+				if (statement instanceof ArrayUpdate) {
+					ArrayUpdate au = (ArrayUpdate)statement;
+					if (au.getArrayObjectId().equals(arrayObjId)
+							&& au.getIndex() == index) {
+						return true;
+					}
+				}
+				return false;
+			}
+			@Override
+			public boolean postVisitStatement(Statement statement) { return false; }
+		}, before);
+		if (before != null) {
+			return (ArrayUpdate)before.getStatement();
+		}
+		return null;
+	}
 }

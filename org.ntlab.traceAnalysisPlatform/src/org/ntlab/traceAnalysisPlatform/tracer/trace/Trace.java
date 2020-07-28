@@ -719,7 +719,8 @@ public class Trace {
 	}
 	
 	private boolean isCollectionAdd(String methodSignature) {
-		return (methodSignature.contains("add(") || methodSignature.contains("set(") || methodSignature.contains("put(") || methodSignature.contains("push("));
+//		return (methodSignature.contains("add(") || methodSignature.contains("set(") || methodSignature.contains("put(") || methodSignature.contains("push("));
+		return (methodSignature.contains("add(") || methodSignature.contains("set(") || methodSignature.contains("put(") || methodSignature.contains("push(") || methodSignature.contains("addElement("));
 	}
 	
 	private boolean isArraySet(Reference ref, TracePoint fieldAccessPoint) {

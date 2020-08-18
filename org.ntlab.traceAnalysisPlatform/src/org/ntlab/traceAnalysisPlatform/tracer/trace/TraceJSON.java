@@ -222,6 +222,8 @@ public class TraceJSON extends Trace {
 							|| thisClassName.contains("java.util.Map")
 							|| thisClassName.contains("java.util.Set")
 							|| thisClassName.contains("java.util.Linked")
+							|| thisClassName.contains("java.util.Collection")
+							|| thisClassName.contains("java.util.Arrays")
 							|| thisClassName.contains("java.lang.Thread")) {
 						isCollectionType = true;
 					}

@@ -147,6 +147,8 @@ public class Trace {
 							|| curLine.contains("Return call(Map")
 							|| curLine.contains("Return call(Set")
 							|| curLine.contains("Return call(Linked")
+							|| curLine.contains("Return call(Collection")
+							|| curLine.contains("Return call(Arrays")
 							|| curLine.contains("Return call(Thread")) {
 						isCollectionType = true;
 					}

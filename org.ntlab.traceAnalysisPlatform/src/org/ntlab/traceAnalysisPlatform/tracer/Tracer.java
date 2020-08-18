@@ -39,7 +39,7 @@ public class Tracer {
 	public static final String TRACER = "org.ntlab.traceAnalysisPlatform.tracer.";
 	public static final String TRACER_CLASS_PATH = "org/ntlab/traceAnalysisPlatform/tracer/Tracer.class";
 	public static final String JAVASSIST_LIBRARY = "javassist.jar";
-	private static final String STANDARD_CLASSES = "java.util.Collection|java.util.ListIterator|java.util.Iterator|java.util.List|java.util.Vector|java.util.ArrayList|java.util.Stack|java.util.Map|java.util.HashMap|java.util.Map$Entry|java.util.Set|java.util.HashSet|java.util.Hashtable|java.util.LinkedList|java.util.Entry|java.util.Collections|java.util.Arrays|java.lang.Thread|java.awt.Component|java.awt.Container|javax.swing.AbstractButton|javax.swing.ActionMap|javax.swing.JTabbedPane";
+	private static final String STANDARD_CLASSES = "java.util.Collection|java.util.ListIterator|java.util.Iterator|java.util.List|java.util.Vector|java.util.ArrayList|java.util.Stack|java.util.Map|java.util.HashMap|java.util.Map\\$Entry|java.util.Set|java.util.HashSet|java.util.Hashtable|java.util.LinkedList|java.util.Entry|java.util.Collections|java.util.Arrays|java.lang.Thread|java.awt.Component|java.awt.Container|javax.swing.AbstractButton|javax.swing.ActionMap|javax.swing.JTabbedPane";
 	private static final String CONCRETE_STANDARD_CLASSES = "java.util.Vector|java.util.ArrayList|java.util.Stack|java.util.HashMap|java.util.HashSet|java.util.Hashtable|java.util.LinkedList|java.lang.Thread|java.awt.Container|java.awt.Panel|java.awt.ScrollPane|java.awt.Window|java.awt.Dialog|java.awt.Frame|javax.swing.JFrame|javax.swing.JPanel|javax.swing.JScrollPane|javax.swing.JTabbedPane|javax.swing.JToolBar|javax.swing.JMenuBar|javax.swing.JButton|javax.swing.JMenuItem|javax.swing.JMenu|javax.swing.JToggleButton|javax.swing.ActionMap";
 //	private static final String STANDARD_CLASSES = "java.util.ListIterator|java.util.Iterator|java.util.List|java.util.Vector|java.util.ArrayList|java.util.Stack|java.util.Map|java.util.HashMap|java.util.Set|java.util.HashSet|java.util.Hashtable|java.util.LinkedList|java.lang.Thread";
 //	private static final String CONCRETE_STANDARD_CLASSES = "java.util.Vector|java.util.ArrayList|java.util.Stack|java.util.HashMap|java.util.HashSet|java.util.Hashtable|java.util.LinkedList|java.lang.Thread";
@@ -258,6 +258,9 @@ public class Tracer {
 				try {
 					CtMethod m = c.getMethod();
 					String className = m.getDeclaringClass().getName();
+					if (className.contains("Entry")) {
+						System.out.println(className);
+					}
 					if (!className.startsWith(STANDARD_LIB) && !className.startsWith(STANDARD_LIB2) && !className.startsWith(TRACER)) {
 						// Normal method invocation
 						c.replace(outputStatementsGenerator.generateReplaceStatementsForCall(m.getDeclaringClass(), m, c.getLineNumber(), true));

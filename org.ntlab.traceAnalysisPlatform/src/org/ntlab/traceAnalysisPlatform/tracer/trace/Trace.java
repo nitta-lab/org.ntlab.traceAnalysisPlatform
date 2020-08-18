@@ -147,6 +147,8 @@ public class Trace {
 							|| curLine.contains("Return call(Map")
 							|| curLine.contains("Return call(Set")
 							|| curLine.contains("Return call(Linked")
+							|| curLine.contains("Return call(Collection")
+							|| curLine.contains("Return call(Arrays")
 							|| curLine.contains("Return call(Thread")) {
 						isCollectionType = true;
 					}
@@ -719,7 +721,8 @@ public class Trace {
 	}
 	
 	private boolean isCollectionAdd(String methodSignature) {
-		return (methodSignature.contains("add(") || methodSignature.contains("set(") || methodSignature.contains("put(") || methodSignature.contains("push("));
+//		return (methodSignature.contains("add(") || methodSignature.contains("set(") || methodSignature.contains("put(") || methodSignature.contains("push("));
+		return (methodSignature.contains("add(") || methodSignature.contains("set(") || methodSignature.contains("put(") || methodSignature.contains("push(") || methodSignature.contains("addElement("));
 	}
 	
 	private boolean isArraySet(Reference ref, TracePoint fieldAccessPoint) {

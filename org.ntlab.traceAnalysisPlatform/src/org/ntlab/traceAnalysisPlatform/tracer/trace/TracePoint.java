@@ -1,12 +1,7 @@
 package org.ntlab.traceAnalysisPlatform.tracer.trace;
-
+ 
 import java.util.ArrayList;
-
-/**
- * An execution point in a trace
- * @author Nitta
- *
- */
+ 
 public class TracePoint {
 	private MethodExecution methodExecution;
 	private int order = 0;
@@ -164,6 +159,15 @@ public class TracePoint {
 		return false;
 	}
 	
+	/**
+	 * 同じメソッド内で順方向に1つ進める。呼び出し先にも呼び出し元にも行かない。
+	 * @return false:メソッドを抜け出た場合, true: それ以外
+	 */
+	public boolean stepNext() {
+		order++;
+		return (order < methodExecution.getStatements().size());
+	}
+	
 	public boolean isValid() {
 		if (methodExecution == null || order == -1 || order >= methodExecution.getStatements().size()) return false;
 		return true;
@@ -176,5 +180,13 @@ public class TracePoint {
 	public boolean isStepBackOut() {
 		if (order < 0) return true;
 		return false;
+	}
+	
+	public boolean equals(Object other) {
+		if (this == other) return true;
+		if (!(other instanceof TracePoint)) return false;
+		if (methodExecution != ((TracePoint) other).methodExecution) return false;
+		if (order != ((TracePoint) other).order) return false;
+		return true;
 	}
 }

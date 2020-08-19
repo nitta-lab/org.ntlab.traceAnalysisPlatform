@@ -258,9 +258,6 @@ public class Tracer {
 				try {
 					CtMethod m = c.getMethod();
 					String className = m.getDeclaringClass().getName();
-					if (className.contains("Entry")) {
-						System.out.println(className);
-					}
 					if (!className.startsWith(STANDARD_LIB) && !className.startsWith(STANDARD_LIB2) && !className.startsWith(TRACER)) {
 						// Normal method invocation
 						c.replace(outputStatementsGenerator.generateReplaceStatementsForCall(m.getDeclaringClass(), m, c.getLineNumber(), true));

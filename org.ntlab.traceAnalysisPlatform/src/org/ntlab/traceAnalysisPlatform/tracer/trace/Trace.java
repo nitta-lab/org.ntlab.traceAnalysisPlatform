@@ -966,15 +966,28 @@ public class Trace {
 			while (curTp != null 
 					&& (curTp.getStatement().getTimeStamp() <= nextThreadTime || nextThreadTime == -1)) {
 				Statement statement = curTp.getStatement();
-				if (visitor.preVisitStatement(statement)) return curTp;
-				if (!(statement instanceof MethodInvocation)) {
-					if (visitor.postVisitStatement(statement)) return curTp;
+				if (!(visitor instanceof AbstractTracePointVisitor)) {
+					if (visitor.preVisitStatement(statement)) return curTp;
+					if (!(statement instanceof MethodInvocation)) {
+						if (visitor.postVisitStatement(statement)) return curTp;
+					}
+				} else {
+					// If the information about the trace point is needed.
+					if (((AbstractTracePointVisitor) visitor).preVisitStatement(statement, curTp)) return curTp;
+					if (!(statement instanceof MethodInvocation)) {
+						if (((AbstractTracePointVisitor) visitor).postVisitStatement(statement, curTp)) return curTp;
+					}
 				}
 				curTp.stepNoReturn();
 				if (!curTp.isValid()) {
 					while (!curTp.stepOver()) {
 						if (curTp.isValid()) {
-							if (visitor.postVisitStatement(curTp.getStatement())) return curTp;
+							if (!(visitor instanceof AbstractTracePointVisitor)) {
+								if (visitor.postVisitStatement(curTp.getStatement())) return curTp;
+							} else {
+								// If the information about the trace point is needed.
+								if (((AbstractTracePointVisitor) visitor).postVisitStatement(curTp.getStatement(), curTp)) return curTp;
+							}
 						} else {
 							ArrayList<MethodExecution> roots = threadRoots.get(curThreadId);
 							while (!curTp.isValid() && roots.size() > 0) {

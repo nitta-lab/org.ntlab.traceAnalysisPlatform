@@ -76,99 +76,137 @@ public class Trace {
 				methodData = line.split(":");
 				int n = methodData[0].indexOf(',');
 				signature = methodData[0].substring(n + 1);
-				threadNo = methodData[methodData.length - 1].split(" ")[1];
-				thisObjectId = methodData[1];
-				thisClassName = methodData[0].substring(0, n).split(" ")[1];
-				isConstractor = false;
-				isStatic = false;
-				if (signature.contains("static ")) {
-					isStatic = true;
-				}
-				callerSideSignature = signature;
-				timeStamp = Long.parseLong(methodData[methodData.length - 2]);
-				if (prevLine != null) {
-					if (prevLine.startsWith("New")) {
-						isConstractor = true;							
-					} else if (prevLine.startsWith("Invoke")) {
-						callerSideSignature = prevLine.split(":")[1];
+				threadNo = getThreadNo(line);
+//				threadNo = methodData[methodData.length - 1].split(" ")[1];
+				if (threadNo != null) {
+					thisObjectId = methodData[1];
+					thisClassName = methodData[0].substring(0, n).split(" ")[1];
+					isConstractor = false;
+					isStatic = false;
+					if (signature.contains("static ")) {
+						isStatic = true;
 					}
+					callerSideSignature = signature;
+					timeStamp = Long.parseLong(methodData[methodData.length - 2]);
+					if (prevLine != null) {
+						if (prevLine.startsWith("New")) {
+							isConstractor = true;							
+						} else if (prevLine.startsWith("Invoke")) {
+							callerSideSignature = prevLine.split(":")[1];
+						}
+					}
+					thread = threads.get(threadNo);
+					Stack<String> stack;
+					if (thread == null) {
+						thread = new ThreadInstance(threadNo);
+						threads.put(threadNo, thread);
+						stack = new Stack<String>();
+						stacks.put(threadNo, stack);
+					} else {
+						stack = stacks.get(threadNo);
+					}
+					stack.push(line);
+					thread.callMethod(signature, callerSideSignature, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
 				}
-				thread = threads.get(threadNo);
-				Stack<String> stack;
-				if (thread == null) {
-					thread = new ThreadInstance(threadNo);
-					threads.put(threadNo, thread);
-					stack = new Stack<String>();
-					stacks.put(threadNo, stack);
-				} else {
-					stack = stacks.get(threadNo);
-				}
-				stack.push(line);
-				thread.callMethod(signature, callerSideSignature, thisClassName, thisObjectId, isConstractor, isStatic, timeStamp);
 			} else if (line.startsWith("Args")) {
 				// The arguments of the last invocation
 				argData = line.split(":");
-				threadNo = argData[argData.length - 1].split(" ")[1];
-				thread = threads.get(threadNo);
-				ArrayList<ObjectReference> arguments = new ArrayList<ObjectReference>();
-				for (int k = 1; k < argData.length - 2; k += 2) {
-					arguments.add(new ObjectReference(argData[k+1], argData[k]));
+				threadNo = getThreadNo(line);
+//				threadNo = argData[argData.length - 1].split(" ")[1];
+				if (threadNo != null) {
+					thread = threads.get(threadNo);
+					ArrayList<ObjectReference> arguments = new ArrayList<ObjectReference>();
+					for (int k = 1; k < argData.length - 2; k += 2) {
+						arguments.add(new ObjectReference(argData[k+1], argData[k]));
+					}
+					thread.setArgments(arguments);
 				}
-				thread.setArgments(arguments);
 			} else if (line.startsWith("Return")) {
 				// Return from a method
 				returnData = line.split(":");
-				threadNo = returnData[returnData.length - 1].split(" ")[1];
-				Stack<String> stack = stacks.get(threadNo);
-				if (!stack.isEmpty()) {
-					String line2 = stack.peek();
-					if (line2.split("\\(")[0].endsWith(line.split("\\(")[1])) {
-						stack.pop();
-					} else {
-						do {
+				threadNo = getThreadNo(line);
+//				threadNo = returnData[returnData.length - 1].split(" ")[1];
+				if (threadNo != null) {
+					Stack<String> stack = stacks.get(threadNo);
+					if (!stack.isEmpty()) {
+						String line2 = stack.peek();
+						if (line2.split("\\(")[0].endsWith(line.split("\\(")[1])) {
 							stack.pop();
-							thread.terminateMethod();
-							line2 = stack.peek();
-						} while (!stack.isEmpty() && !line2.split("\\(")[0].endsWith(line.split("\\(")[1]));
-						if (!stack.isEmpty()) stack.pop();
+						} else {
+							do {
+								stack.pop();
+								thread.terminateMethod();
+								if (!stack.isEmpty()) line2 = stack.peek();
+							} while (!stack.isEmpty() && !line2.split("\\(")[0].endsWith(line.split("\\(")[1]));
+							if (!stack.isEmpty()) stack.pop();
+						}
+						thread = threads.get(threadNo);
+						ObjectReference returnValue = new ObjectReference(returnData[2], returnData[1]);					
+						thisObjectId = returnData[2];
+						isCollectionType = false;
+						String curLine = returnData[0];
+						if(curLine.contains("Return call(List")
+								|| curLine.contains("Return call(Vector")
+								|| curLine.contains("Return call(Iterator")
+								|| curLine.contains("Return call(ListIterator")
+								|| curLine.contains("Return call(ArrayList")
+								|| curLine.contains("Return call(Stack")
+								|| curLine.contains("Return call(Hash")
+								|| curLine.contains("Return call(Map")
+								|| curLine.contains("Return call(Set")
+								|| curLine.contains("Return call(Linked")
+								|| curLine.contains("Return call(Collection")
+								|| curLine.contains("Return call(Arrays")
+								|| curLine.contains("Return call(Thread")) {
+							isCollectionType = true;
+						}
+						thread.returnMethod(returnValue, thisObjectId, isCollectionType);
 					}
-					thread = threads.get(threadNo);
-					ObjectReference returnValue = new ObjectReference(returnData[2], returnData[1]);					
-					thisObjectId = returnData[2];
-					isCollectionType = false;
-					String curLine = returnData[0];
-					if(curLine.contains("Return call(List")
-							|| curLine.contains("Return call(Vector")
-							|| curLine.contains("Return call(Iterator")
-							|| curLine.contains("Return call(ListIterator")
-							|| curLine.contains("Return call(ArrayList")
-							|| curLine.contains("Return call(Stack")
-							|| curLine.contains("Return call(Hash")
-							|| curLine.contains("Return call(Map")
-							|| curLine.contains("Return call(Set")
-							|| curLine.contains("Return call(Linked")
-							|| curLine.contains("Return call(Collection")
-							|| curLine.contains("Return call(Arrays")
-							|| curLine.contains("Return call(Thread")) {
-						isCollectionType = true;
-					}
-					thread.returnMethod(returnValue, thisObjectId, isCollectionType);
 				}
 			} else if (line.startsWith("get")) {
 				// Field access
 				accessData = line.split(":");
-				threadNo = accessData[8].split(" ")[1];
-				thread = threads.get(threadNo);
-				if (thread != null) thread.fieldAccess(accessData[5], accessData[6], accessData[3], accessData[4], accessData[1], accessData[2]);
+				if (accessData.length >= 9) {
+					threadNo = getThreadNo(line);
+//					threadNo = accessData[8].split(" ")[1];
+					if (threadNo != null) {
+						thread = threads.get(threadNo);
+						if (thread != null) thread.fieldAccess(accessData[5], accessData[6], accessData[3], accessData[4], accessData[1], accessData[2]);
+					}
+				}
 			} else if (line.startsWith("set")) {
 				// Field update
 				updateData = line.split(":");
-				threadNo = updateData[6].split(" ")[1];
-				thread = threads.get(threadNo);
-				if (thread != null) thread.fieldUpdate(updateData[3], updateData[4], updateData[1], updateData[2]);
-			}
+				if (updateData.length >= 7) {
+					threadNo = getThreadNo(line);
+//					threadNo = updateData[6].split(" ")[1];
+					if (threadNo != null) {
+						thread = threads.get(threadNo);
+						if (thread != null) thread.fieldUpdate(updateData[3], updateData[4], updateData[1], updateData[2]);
+					}
+				}
+			} else continue;
 			prevLine = line;
 		}
+	}
+	
+	private String getThreadNo(String line) {
+		int tidx = line.indexOf("ThreadNo ");
+		if (tidx == -1) return null;
+		String threadNo = line.substring(tidx + 9);
+		try {
+			Integer.parseInt(threadNo);
+		} catch (NumberFormatException e) {
+			for (int i = 1; i <= threadNo.length(); i++) {
+				try {
+					Integer.parseInt(threadNo.substring(0, i));
+				} catch (NumberFormatException e2) {
+					threadNo = threadNo.substring(0, i - 1);
+					break;
+				}
+			}
+		}
+		return threadNo;
 	}
 	
 	/**
@@ -561,9 +599,19 @@ public class Trace {
 		start[0] = null;
 		return false;
 	}
-
+	
+	public TracePoint getLastTracePoint() {
+		TracePoint tp = null;
+		for (ThreadInstance thread: threads.values()) {
+			if (tp == null || thread.getLastTracePoint().getStatement().getTimeStamp() > tp.getStatement().getTimeStamp()) {
+				tp = thread.getLastTracePoint();
+			}
+		}
+		return tp;
+	}
+	
 	public TracePoint getCreationTracePoint(final ObjectReference newObjectId, TracePoint before) {
-		before = before.duplicate();
+		if (before != null) before = before.duplicate();
 		before = traverseStatementsInTraceBackward(
 				new IStatementVisitor() {
 					@Override
@@ -593,7 +641,7 @@ public class Trace {
 	 * @return the corresponding execution point
 	 */
 	public TracePoint getFieldUpdateTracePoint(final Reference ref, TracePoint before) {
-		before = before.duplicate();
+		if (before != null) before = before.duplicate();
 		final String srcType = ref.getSrcClassName();
 		final String dstType = ref.getDstClassName();
 		final String srcObjId = ref.getSrcObjectId();
@@ -700,7 +748,7 @@ public class Trace {
 	 * @return the corresponding execution point
 	 */
 	public TracePoint getArraySetTracePoint(final Reference ref, TracePoint before) {
-		final TracePoint start = before.duplicate();
+		final TracePoint start = (before == null) ? null : before.duplicate();
 		before = traverseStatementsInTraceBackward(new IStatementVisitor() {
 				@Override
 				public boolean preVisitStatement(Statement statement) {
@@ -721,7 +769,6 @@ public class Trace {
 	}
 	
 	private boolean isCollectionAdd(String methodSignature) {
-//		return (methodSignature.contains("add(") || methodSignature.contains("set(") || methodSignature.contains("put(") || methodSignature.contains("push("));
 		return (methodSignature.contains("add(") || methodSignature.contains("set(") || methodSignature.contains("put(") || methodSignature.contains("push(") || methodSignature.contains("addElement("));
 	}
 	
@@ -805,6 +852,9 @@ public class Trace {
 					traceLastThread2 = traceLastThread;
 					traceLastTime = threadLastTime;
 					traceLastThread = threadId;
+				} else if (traceLastTime2 < threadLastTime) {
+					traceLastTime2 = threadLastTime;
+					traceLastThread2 = threadId;
 				}
 			}
 		}
@@ -818,12 +868,19 @@ public class Trace {
 	 * @return a method execution where the traverse is aborted
 	 */
 	public MethodExecution traverseMethodEntriesInTraceBackward(IMethodExecutionVisitor visitor, TracePoint before) {
+		if (before == null) {
+			return traverseMethodEntriesInTraceBackward(visitor);
+		}
 		HashMap<String, ArrayList<MethodExecution>> threadRoots = new HashMap<String, ArrayList<MethodExecution>>();
 		HashMap<String, TracePoint> threadLastPoints = new HashMap<String, TracePoint>();
 		String traceLastThread = null;
 		long traceLastTime2 = 0;
 		String traceLastThread2 = null;
-		ThreadInstance thread = threads.get(before.getStatement().getThreadNo());
+		Statement st = before.getStatement();
+		if (st == null) {
+			st = before.getMethodExecution().getCallerTracePoint().getStatement();
+		}
+		ThreadInstance thread = threads.get(st.getThreadNo());
 		ArrayList<MethodExecution> rootExecutions = (ArrayList<MethodExecution>)thread.getRoot().clone();		
 		for (int n = rootExecutions.size() - 1; n >= 0; n--) {
 			MethodExecution root = rootExecutions.get(n);
@@ -1086,7 +1143,11 @@ public class Trace {
 		String traceLastThread = null;
 		long traceLastTime2 = 0;
 		String traceLastThread2 = null;
-		ThreadInstance thread = threads.get(before.getStatement().getThreadNo());
+		Statement st = before.getStatement();
+		if (st == null) {
+			st = before.getMethodExecution().getCallerTracePoint().getStatement();
+		}
+		ThreadInstance thread = threads.get(st.getThreadNo());
 		for (String threadId: threads.keySet()) {
 			ThreadInstance t = threads.get(threadId);
 			ArrayList<MethodExecution> rootExecutions = (ArrayList<MethodExecution>)t.getRoot().clone();

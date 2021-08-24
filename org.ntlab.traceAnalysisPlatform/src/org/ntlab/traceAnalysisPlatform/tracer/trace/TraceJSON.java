@@ -205,7 +205,7 @@ public class TraceJSON extends Trace {
 						do {
 							stack.pop();
 							thread.terminateMethod();
-							line2 = stack.peek();
+							if (!stack.isEmpty()) line2 = stack.peek();
 						} while (!stack.isEmpty() && !line2.endsWith(shortSignature));
 						if (!stack.isEmpty()) stack.pop();
 					}
@@ -735,7 +735,11 @@ public class TraceJSON extends Trace {
 		String traceLastThread = null;
 		long traceLastTime2 = 0;
 		String traceLastThread2 = null;
-		ThreadInstance thread = threads.get(before.getStatement().getThreadNo());
+		Statement st = before.getStatement();
+		if (st == null) {
+			st = before.getMethodExecution().getCallerTracePoint().getStatement();
+		}
+		ThreadInstance thread = threads.get(st.getThreadNo());
 		for (String threadId: threads.keySet()) {
 			ThreadInstance t = threads.get(threadId);
 			ArrayList<MethodExecution> rootExecutions = (ArrayList<MethodExecution>)t.getRoot().clone();

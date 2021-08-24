@@ -189,4 +189,8 @@ public class ThreadInstance {
 	public TracePoint getCurrentTracePoint() {
 		return new TracePoint(curMethodExecution, curMethodExecution.getStatements().size() - 1);
 	}
+	
+	public TracePoint getLastTracePoint() {
+		return roots.get(roots.size() - 1).getExitPoint();		
+	}
 }

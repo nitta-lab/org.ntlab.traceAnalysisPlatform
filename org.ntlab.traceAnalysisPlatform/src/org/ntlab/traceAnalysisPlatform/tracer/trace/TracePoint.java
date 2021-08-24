@@ -2,6 +2,11 @@ package org.ntlab.traceAnalysisPlatform.tracer.trace;
  
 import java.util.ArrayList;
  
+/**
+ * An execution point in a trace
+ * @author Nitta
+ *
+ */
 public class TracePoint {
 	private MethodExecution methodExecution;
 	private int order = 0;
@@ -16,6 +21,7 @@ public class TracePoint {
 	}
 	
 	public Statement getStatement() {
+		if (methodExecution.getStatements().size() <= order) return null;
 		return methodExecution.getStatements().get(order);
 	}
 	
@@ -37,8 +43,8 @@ public class TracePoint {
 	}
 	
 	/**
-	 * 順方向の全探索(ただし、実行文が記録されていないメソッド実行には潜らない)
-	 * @return false: これ以上辿れない場合, true: それ以外
+	 * forward full step execution (excepting method executions in which no statement is recorded)
+	 * @return false: cannot traverse any more, true: otherwise
 	 */
 	public boolean stepFull() {
 		if (getStatement() instanceof MethodInvocation) {
@@ -62,8 +68,8 @@ public class TracePoint {
 	}
 	
 	/**
-	 * 逆方向の全探索(ただし、実行文が記録されていないメソッド実行には潜らない。また、呼び出し先のメソッド実行内を探索した後に、呼び出し元のメソッド呼び出し文を訪問するので注意!!)
-	 * @return false: これ以上辿れない場合, true: それ以外
+	 * backward  full step execution (excepting method executions in which no statement is recorded. Caution!!: method invocation statement will be revisited after traversing the called method execution)
+	 * @return false: cannot traverse any more, true: otherwise
 	 */
 	public boolean stepBackFull() {
 		if (order <= 0) {
@@ -86,8 +92,8 @@ public class TracePoint {
 	}
 	
 	/**
-	 * 順方向に探索する。呼び出し元に戻るが呼び出し先には潜らない。
-	 * @return false: 呼び出し元に戻った場合またはこれ以上辿れない場合, true: それ以外 
+	 * forward step execution without stepping into the called method execution
+	 * @return false: has returned to the calling method execution or cannot traverse any mode, true: otherwise
 	 */
 	public boolean stepOver() {
 		if (order < methodExecution.getStatements().size() - 1) {
@@ -104,8 +110,8 @@ public class TracePoint {
 	}
 	
 	/**
-	 * 逆方向に探索する。呼び出し元に戻るが呼び出し先には潜らない。
-	 * @return false: 呼び出し元に戻った場合またはこれ以上辿れない場合, true: それ以外 
+	 * backward step execution without stepping into the called method execution
+	 * @return false: has returned to the calling method execution or cannot traverse any mode, true: otherwise
 	 */
 	public boolean stepBackOver() {
 		if (order > 0) {
@@ -122,8 +128,8 @@ public class TracePoint {
 	}
 	
 	/**
-	 * 順方向に探索する。呼び出し先を辿るが呼び出し元には戻らない。
-	 * @return false: 呼び出し先に移った場合またはこれ以上辿れない場合, true: それ以外
+	 * forward step execution without returning to the calling method execution
+	 * @return false: has stepped into the called method execution or cannot traverse any mode, true: otherwise
 	 */
 	public boolean stepNoReturn() {
 		if (getStatement() instanceof MethodInvocation) {
@@ -131,7 +137,7 @@ public class TracePoint {
 			if (methodExecution.getStatements().size() > 0) {
 				order = 0;
 			} else {
-				order = -1;				// 呼び出し先で実行文が記録されていない場合
+				order = -1;				// no statement is recorded in the called method execution
 			}
 			return false;
 		}
@@ -143,13 +149,13 @@ public class TracePoint {
 	}
 	
 	/**
-	 * 逆方向に探索する。呼び出し先を辿るが呼び出し元には戻らない。(先に呼び出し元のメソッド呼び出し文を訪問してから呼び出し先のメソッド実行を訪問するので注意!!)
-	 * @return　false: 呼び出し先に移った場合またはこれ以上辿れない場合, true: それ以外
+	 * backward step execution without returning to the calling method execution (Caution!!: before stepping into the called method execution, the method invocation statement in the calling method is visited in advance)
+	 * @return　false: has stepped into the called method execution or cannot traverse any mode, true: otherwise
 	 */
 	public boolean stepBackNoReturn() {
 		if (getStatement() instanceof MethodInvocation) {
 			methodExecution = ((MethodInvocation)getStatement()).getCalledMethodExecution();
-			order = methodExecution.getStatements().size() - 1;			// -1 になる場合もある(呼び出し先で実行文が記録されていない場合)
+			order = methodExecution.getStatements().size() - 1;			// the value mat become -1 (when no statement is recorded in the called method execution)
 			return false;
 		}
 		order--;
@@ -160,8 +166,8 @@ public class TracePoint {
 	}
 	
 	/**
-	 * 同じメソッド内で順方向に1つ進める。呼び出し先にも呼び出し元にも行かない。
-	 * @return false:メソッドを抜け出た場合, true: それ以外
+	 * forward step execution without returning to the calling method execution and stepping into the called method execution
+	 * @return false: exit a method execution, true: otherwise
 	 */
 	public boolean stepNext() {
 		order++;

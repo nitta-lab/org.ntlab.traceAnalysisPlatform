@@ -185,7 +185,7 @@ public class Trace {
 						if (thread != null) thread.fieldUpdate(updateData[3], updateData[4], updateData[1], updateData[2]);
 					}
 				}
-			} else continue;
+			}
 			prevLine = line;
 		}
 	}

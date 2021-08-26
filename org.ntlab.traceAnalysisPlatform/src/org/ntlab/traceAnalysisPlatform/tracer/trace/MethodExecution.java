@@ -204,7 +204,7 @@ public class MethodExecution {
 				} else if (s instanceof MethodInvocation) {
 					MethodInvocation m = (MethodInvocation) s;
 					ObjectReference ret = m.getCalledMethodExecution().getReturnValue();
-					if (ret.getActualType().equals(actualTypeName)) {
+					if (ret != null && ret.getActualType().equals(actualTypeName)) {
 						objectRefMap.put(ret, tp.duplicate());												
 					}
 				}

@@ -171,7 +171,8 @@ public class Trace {
 //					threadNo = accessData[8].split(" ")[1];
 					if (threadNo != null) {
 						thread = threads.get(threadNo);
-						if (thread != null) thread.fieldAccess(accessData[5], accessData[6], accessData[3], accessData[4], accessData[1], accessData[2]);
+						timeStamp++;					//	dummy time stamp (to preserve execution order)
+						if (thread != null) thread.fieldAccess(accessData[5], accessData[6], accessData[3], accessData[4], accessData[1], accessData[2], 0, timeStamp);
 					}
 				}
 			} else if (line.startsWith("set")) {
@@ -182,7 +183,8 @@ public class Trace {
 //					threadNo = updateData[6].split(" ")[1];
 					if (threadNo != null) {
 						thread = threads.get(threadNo);
-						if (thread != null) thread.fieldUpdate(updateData[3], updateData[4], updateData[1], updateData[2]);
+						timeStamp++;					//	dummy time stamp (to preserve execution order)
+						if (thread != null) thread.fieldUpdate(updateData[3], updateData[4], updateData[1], updateData[2], 0, timeStamp);
 					}
 				}
 			}
